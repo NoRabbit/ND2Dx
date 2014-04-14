@@ -28,8 +28,9 @@
  * THE SOFTWARE.
  */
 
-package de.nulldesign.nd2dx.materials.shader {
-
+package de.nulldesign.nd2dx.materials.shader 
+{
+	
 	import com.adobe.utils.AGALMacroAssembler;
 	import de.nulldesign.nd2dx.materials.texture.Texture2D;
 	import flash.display3D.Context3DTextureFormat;
@@ -40,10 +41,10 @@ package de.nulldesign.nd2dx.materials.shader {
 	import flash.display3D.Context3DProgramType;
 	import flash.display3D.Program3D;
 
-	public class Shader2D {
-
+	public class Shader2D 
+	{
 		public var shader:Program3D;
-
+		
 		public static const COMMON_LIB:String =
 			"macro min( a, b ) {" +
 			"	min out, a, b;" +

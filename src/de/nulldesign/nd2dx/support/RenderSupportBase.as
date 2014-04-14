@@ -16,6 +16,7 @@ package de.nulldesign.nd2dx.support
 		public var elapsed:Number = 0.0
 		public var deviceWasLost:Boolean = false;
 		public var viewProjectionMatrix:Matrix3D;
+		public var isPrepared:Boolean = false;
 		
 		public var debugLog:String = "";
 		
@@ -26,10 +27,20 @@ package de.nulldesign.nd2dx.support
 		
 		public function prepare():void
 		{
+			isPrepared = true;
+		}
+		
+		public function setScrollRect(node:Node2D):void
+		{
 			
 		}
 		
 		public function drawMesh(meshRenderer:Mesh2DRendererComponent):void
+		{
+			
+		}
+		
+		public function endDrawNode(node:Node2D):void
 		{
 			
 		}

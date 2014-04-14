@@ -28,7 +28,8 @@
  * THE SOFTWARE.
  */
 
-package de.nulldesign.nd2dx.materials.shader {
+package de.nulldesign.nd2dx.materials.shader 
+{	
 
 	import de.nulldesign.nd2dx.materials.texture.Texture2D;
 	import de.nulldesign.nd2dx.materials.texture.TextureOption;
@@ -37,52 +38,61 @@ package de.nulldesign.nd2dx.materials.shader {
 	import flash.display3D.Context3D;
 	import flash.utils.Dictionary;
 
-	public class ShaderCache {
-
+	public class ShaderCache 
+	{
+		
 		private static var cache:Dictionary = new Dictionary(true);
-
-		public function ShaderCache() {
+		
+		public function ShaderCache() 
+		{
+			
 		}
-
-		public static function getShader(context:Context3D, defines:Array, vertexShaderString:String, fragmentShaderString:String, texture:Texture2D):Shader2D {
+		
+		public static function getShader(context:Context3D, defines:Array, vertexShaderString:String, fragmentShaderString:String, texture:Texture2D):Shader2D 
+		{			
 			var shaders:Dictionary = cache[context];
-
+			
 			if(!shaders) {
 				shaders = cache[context] = new Dictionary();
 			}
-
+			
 			var key:String = defines.join() + (texture ? "," + texture.textureOptions + "," + texture.hasPremultipliedAlpha : "");
-			//trace(key);
 			var shader:Shader2D = shaders[key];
-
-			if(shader) {
+			
+			if (shader) 
+			{				
 				return shader;
 			}
-
-			if(texture) {
+			
+			if (texture) 
+			{				
 				defines.push("PREMULTIPLIED_ALPHA", texture.hasPremultipliedAlpha);
 				defines.push("REPEAT_CLAMP", texture.textureOptions & TextureOption.REPEAT_CLAMP);
 			}
-
+			
 			var commonShaderString:String = "";
-
-			for(var i:uint = 1; i < defines.length; i += 2) {
+			
+			for (var i:uint = 1; i < defines.length; i += 2) 
+			{				
 				commonShaderString += "#define " + defines[i] + "=" + int(defines[i + 1]) + ";";
 			}
-
+			
 			//shader = shaders[key] = new Shader2D(context, commonShaderString, vertexShaderString, fragmentShaderString, texture ? texture.textureOptions : 0);
 			shader = shaders[key] = new Shader2D(context, commonShaderString, vertexShaderString, fragmentShaderString, texture);
-
+			
 			return shader;
 		}
-
-		public static function handleDeviceLoss():void {
-			for each(var shaders:Dictionary in cache) {
-				for each(var shader:Shader2D in shaders) {
+		
+		public static function handleDeviceLoss():void 
+		{			
+			for each(var shaders:Dictionary in cache) 
+			{				
+				for each(var shader:Shader2D in shaders) 
+				{					
 					shader.dispose();
 				}
 			}
-
+			
 			cache = new Dictionary(true);
 		}
 	}

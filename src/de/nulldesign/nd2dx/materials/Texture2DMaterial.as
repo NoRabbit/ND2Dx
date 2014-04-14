@@ -110,7 +110,6 @@ package de.nulldesign.nd2dx.materials
 				height = texture.bitmapHeight;
 				frameOffsetX = texture.frameOffsetX;
 				frameOffsetY = texture.frameOffsetY;
-				invalidateClipSpace = true;
 			}
 			else
 			{
@@ -120,6 +119,8 @@ package de.nulldesign.nd2dx.materials
 				frameOffsetX = 0.0;
 				frameOffsetY = 0.0;
 			}
+			
+			invalidateClipSpace = true;
 		}
 		
 		override public function updateClipSpace():void 
@@ -127,6 +128,7 @@ package de.nulldesign.nd2dx.materials
 			clipSpaceMatrix.identity();
 			clipSpaceMatrix.appendScale(_width, _height, 1.0);
 			clipSpaceMatrix.appendTranslation(frameOffsetX, frameOffsetY, 0.0);
+			//trace(frameOffsetX, frameOffsetY);
 			clipSpaceMatrix.append(_node.worldModelMatrix);
 			invalidateClipSpace = false;
 		}
@@ -139,9 +141,9 @@ package de.nulldesign.nd2dx.materials
 			context.setVertexBufferAt(0, mesh.vertexBuffer, 0, Context3DVertexBufferFormat.FLOAT_2); // vertex
 			context.setVertexBufferAt(1, mesh.vertexBuffer, 2, Context3DVertexBufferFormat.FLOAT_2); // uv
 			
-			if (scrollRect) 
+			if (node.useScrollRect) 
 			{
-				context.setScissorRectangle(scrollRect);
+				context.setScissorRectangle(node.worldScrollRect);
 			}
 			
 			context.setProgramConstantsFromMatrix(Context3DProgramType.VERTEX, 0, viewProjectionMatrix, true);

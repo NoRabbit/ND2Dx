@@ -31,11 +31,12 @@
 package de.nulldesign.nd2dx.display 
 {	
 	import de.nulldesign.nd2dx.materials.shader.ShaderCache;
-	import de.nulldesign.nd2dx.support.BatchRenderSupport;
 	import de.nulldesign.nd2dx.support.MainRenderSupport;
 	import de.nulldesign.nd2dx.support.RenderSupportBase;
+	import de.nulldesign.nd2dx.support.RenderSupportManager;
 	import de.nulldesign.nd2dx.utils.Statistics;
 	import de.nulldesign.nd2dx.utils.WorldUtil;
+	import org.osflash.signals.Signal;
 
 	import flash.display.Sprite;
 	import flash.display3D.Context3D;
@@ -79,8 +80,10 @@ package de.nulldesign.nd2dx.display
 	 * There can be only one active scene.
 	 *
 	 */
-	public class World2D extends Sprite {
-
+	public class World2D extends Sprite 
+	{
+		public var renderSupportManager:RenderSupportManager = RenderSupportManager.getInstance();
+		
 		public var antiAliasing:uint = 0;
 		public var depthAndStencil:Boolean = false;
 		public var enableErrorChecking:Boolean = true;
@@ -102,11 +105,13 @@ package de.nulldesign.nd2dx.display
 		protected var deviceInitialized:Boolean = false;
 		public var deviceWasLost:Boolean = false;
 		
-		public var vMouseInNodes:Vector.<Node2D> = new Vector.<Node2D>();
-		public var vMouseDownInNodes:Vector.<Node2D> = new Vector.<Node2D>();
+		public var mouseInNode:Node2D = null;
+		public var mouseDownInNode:Node2D = null;
 		
 		public var renderSupport:RenderSupportBase;
-
+		
+		public var onInit:Signal = new Signal(World2D);
+		
 		/**
 		 * Constructor of class world
 		 *
@@ -124,10 +129,11 @@ package de.nulldesign.nd2dx.display
 			this.bounds = bounds;
 			this.stageID = stageID;
 			
-			if( !renderSupport ) renderSupport = new MainRenderSupport();
+			if ( !renderSupport ) renderSupport = renderSupportManager.mainRenderSupport;
 			renderSupport.camera = camera;
 			
 			this.renderSupport = renderSupport;
+			renderSupportManager.currentRenderSupport = this.renderSupport;
 			
 			addEventListener(Event.ADDED_TO_STAGE, addedToStage);
 		}
@@ -159,6 +165,7 @@ package de.nulldesign.nd2dx.display
 				//stage.stage3Ds[stageID].requestContext3D(renderMode);
 				
 				var requestContext3D:Function = stage.stage3Ds[stageID].requestContext3D;
+				
 				if (requestContext3D.length == 1)
 				{
 					requestContext3D(renderMode);
@@ -219,15 +226,13 @@ package de.nulldesign.nd2dx.display
 				scene.setReferences(stage, camera, this, scene);
 			}
 			
-			dispatchEvent(new Event(Event.INIT));
+			onInit.dispatch(this);
 		}
 		
 		protected function mouseEventHandler(event:MouseEvent):void 
 		{
 			if ( scene && ( scene.mouseChildren || scene.mouseEnabled ) && stage && camera ) 
 			{
-				var mouseEventType:String = event.type;
-				
 				// transformation of normalized coordinates between -1 and 1
 				mousePosition.x = (stage.mouseX - (bounds ? bounds.x : 0.0)) / camera.sceneWidth * 2.0 - 1.0;
 				mousePosition.y = -((stage.mouseY - (bounds ? bounds.y : 0.0)) / camera.sceneHeight * 2.0 - 1.0);
@@ -236,132 +241,106 @@ package de.nulldesign.nd2dx.display
 				
 				var mouseNode:Node2D = scene.processMouseEvent(mousePosition, event, camera.getViewProjectionMatrix());
 				
-				var vCurrentMouseInNodes:Vector.<Node2D> = new Vector.<Node2D>();
-				
 				if ( mouseNode )
 				{
-					// we have a hit, traverse its hierarchy from top to bottom
-					var currentMouseNode:Node2D = mouseNode;
+					// update mouse position
+					mouseNode.updateMousePosition(mousePosition, camera.getViewProjectionMatrix());
 					
-					while ( currentMouseNode )
+					if ( mouseInNode && mouseInNode != mouseNode )
 					{
-						// check if mouse is enabled first
-						if ( currentMouseNode.mouseEnabled )
+						dispatchMouseEventInNodeAndItsParents(mouseInNode, MouseEvent.MOUSE_OUT, null, event);
+						mouseInNode = null;
+					}
+					
+					if ( event.type == MouseEvent.MOUSE_MOVE )
+					{
+						if ( mouseInNode )
 						{
-							currentMouseNode.updateMousePosition(mousePosition, camera.getViewProjectionMatrix());
+							// mouse is moving inside node
+							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_MOVE, mouseNode, event);
+						}
+						else
+						{
+							// mouse just entered node
+							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_OVER, mouseNode, event);
 							
-							// check if there is a hit
-							if ( currentMouseNode.hitTest() )
+							// and is also moving inside
+							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_MOVE, mouseNode, event);
+						}
+					}
+					else
+					{
+						if ( event.type == MouseEvent.MOUSE_DOWN )
+						{
+							// mouse is down in node
+							mouseDownInNode = mouseNode
+							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_DOWN, mouseNode, event);
+						}
+						else if ( event.type == MouseEvent.MOUSE_UP )
+						{
+							// check if mouse down on that node before
+							if ( mouseDownInNode == mouseNode )
 							{
-								// there is a hit on this one, check if mouse was inside this node already
-								if ( event.type == MouseEvent.MOUSE_MOVE )
-								{
-									if ( currentMouseNode.mouseInNode )
-									{
-										// yes, then mouse is moving over
-										currentMouseNode.onMouseEvent.dispatch(MouseEvent.MOUSE_MOVE, currentMouseNode, event);
-									}
-									else
-									{
-										// then mouse just entered that node
-										currentMouseNode.onMouseEvent.dispatch(MouseEvent.MOUSE_OVER, currentMouseNode, event);
-										
-										// and is also moving
-										currentMouseNode.onMouseEvent.dispatch(MouseEvent.MOUSE_MOVE, currentMouseNode, event);
-									}
-									
-									// this is to check whether mouse is still inside this node, even it it's not processed in this "while loop" after this process
-									if ( vMouseInNodes.indexOf(currentMouseNode) >= 0 ) vMouseInNodes.splice(vMouseInNodes.indexOf(currentMouseNode), 1);
-									vCurrentMouseInNodes.push(currentMouseNode);
-								}
-								else
-								{
-									if ( event.type == MouseEvent.MOUSE_DOWN && vMouseDownInNodes.indexOf(currentMouseNode) < 0 )
-									{
-										vMouseDownInNodes.push(currentMouseNode);
-										
-										// dispatch original event
-										currentMouseNode.onMouseEvent.dispatch(event.type, currentMouseNode, event);
-									}
-									else if ( event.type == MouseEvent.MOUSE_UP )
-									{
-										if ( vMouseDownInNodes.indexOf(currentMouseNode) >= 0 )
-										{
-											vMouseDownInNodes.splice(vMouseDownInNodes.indexOf(currentMouseNode), 1);
-											
-											// dispatch original event
-											currentMouseNode.onMouseEvent.dispatch(event.type, currentMouseNode, event);
-											
-											// dispatch click event
-											currentMouseNode.onMouseEvent.dispatch(MouseEvent.CLICK, currentMouseNode, event);
-										}
-										else
-										{
-											// dispatch original event
-											currentMouseNode.onMouseEvent.dispatch(event.type, currentMouseNode, event);
-										}
-									}
-								}
+								// dispatch mouse up
+								dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_UP, mouseNode, event);
 								
-								// mouse is currently inside this node
-								currentMouseNode.mouseInNode = true;
+								// dispatch click
+								dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.CLICK, mouseNode, event);
 							}
 							else
 							{
-								// no hit, check if mouse was previously inside that node
-								if ( event.type == MouseEvent.MOUSE_MOVE && currentMouseNode.mouseInNode )
+								if ( mouseDownInNode )
 								{
-									// yes, then mouse is leaving
-									currentMouseNode.onMouseEvent.dispatch(MouseEvent.MOUSE_OUT, currentMouseNode, event);
+									dispatchMouseEventInNodeAndItsParents(mouseDownInNode, "releaseOutside", null, event);
 								}
 								
-								// mouse is not inside that node anymore
-								currentMouseNode.mouseInNode = false;
+								// dispatch mouse up
+								dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_UP, mouseNode, event);
 							}
+							
+							mouseDownInNode = null;
 						}
-						
-						// go to parent of current node
-						currentMouseNode = currentMouseNode.parent;
 					}
+					
+					// mouse is currently inside this node
+					mouseInNode = mouseNode;
 				}
-				
-				if ( vMouseInNodes.length )
+				else if ( event.type == MouseEvent.MOUSE_MOVE && mouseInNode )
 				{
-					var i:int = 0;
-					var n:int = vMouseInNodes.length;
-					
-					for (; i < n; i++) 
-					{
-						currentMouseNode = vMouseInNodes[i];
-						
-						// if mouse was in node, set it out
-						if ( currentMouseNode.mouseInNode && event.type == MouseEvent.MOUSE_MOVE )
-						{
-							currentMouseNode.onMouseEvent.dispatch(MouseEvent.MOUSE_OUT, currentMouseNode, event);
-						}
-						
-						// mouse is not inside that node anymore
-						currentMouseNode.mouseInNode = false;
-					}
-					
-					vMouseInNodes.splice(0, vMouseInNodes.length);
+					dispatchMouseEventInNodeAndItsParents(mouseInNode, MouseEvent.MOUSE_OUT, null, event);
+					mouseInNode = null;
 				}
-				
-				vMouseInNodes = vCurrentMouseInNodes;
-				
-				if ( event.type == MouseEvent.MOUSE_UP && vMouseDownInNodes.length )
+				else if ( event.type == MouseEvent.MOUSE_UP && mouseDownInNode )
 				{
-					i = 0;
-					n = vMouseDownInNodes.length;
-					
-					for (; i < n; i++) 
-					{
-						currentMouseNode = vMouseDownInNodes[i];
-						currentMouseNode.onMouseEvent.dispatch(MouseEvent.RELEASE_OUTSIDE, currentMouseNode, event);
-					}
-					
-					vMouseDownInNodes.splice(0, vMouseDownInNodes.length);
+					dispatchMouseEventInNodeAndItsParents(mouseDownInNode, "releaseOutside", null, event);
+					mouseDownInNode = null;
 				}
+			}
+		}
+		
+		public function dispatchMouseEventInNodeAndItsParents(node:Node2D, type:String, target:Node2D, event:MouseEvent):void
+		{
+			node.onMouseEvent.dispatch(type, target, node, event);
+			
+			if ( !node.mousePropagate || !node.mousePropagateOnce )
+			{
+				node.mousePropagateOnce = true;
+				return;
+			}
+			
+			var parent:Node2D = node.parent;
+			
+			while (parent)
+			{
+				parent.onMouseEvent.dispatch(type, target, parent, event);
+				
+				if ( !parent.mousePropagate || !parent.mousePropagateOnce )
+				{
+					parent.mousePropagateOnce = true;
+					return;
+				}
+				
+				parent = parent.parent;
 			}
 		}
 
@@ -387,6 +366,9 @@ package de.nulldesign.nd2dx.display
 		{
 			timeSinceStartInSeconds = getTimer() * 0.001;
 			
+			renderSupportManager.initRenderSupports();
+			renderSupportManager.currentRenderSupport = renderSupport;
+			
 			renderSupport.elapsed = timeSinceStartInSeconds - lastFramesTime;
 			
 			if (scene && context3D && context3D.driverInfo != "Disposed") 
@@ -405,11 +387,13 @@ package de.nulldesign.nd2dx.display
 				
 				Statistics.reset();
 				
+				renderSupport.viewProjectionMatrix = camera.getViewProjectionMatrix();
 				renderSupport.prepare();
 				
 				scene.drawNode(renderSupport);
 				
-				renderSupport.finalize();
+				//renderSupport.finalize();
+				renderSupportManager.currentRenderSupport.finalize();
 				
 				context3D.present();
 			}
@@ -417,14 +401,17 @@ package de.nulldesign.nd2dx.display
 			lastFramesTime = timeSinceStartInSeconds;
 		}
 
-		public function setActiveScene(value:Scene2D):void {
-			if(scene) {
+		public function setActiveScene(value:Scene2D):void 
+		{			
+			if (scene) 
+			{
 				scene.setReferences(null, null, null, null);
 			}
-
+			
 			scene = value;
-
-			if(scene) {
+			
+			if (scene) 
+			{
 				scene.setReferences(stage, camera, this, scene);
 				scene.step(0);
 			}

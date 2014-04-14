@@ -255,7 +255,7 @@ package de.nulldesign.nd2dx.utils
 		
 		public static function atlasTexture2DFromParser(texture2D:Texture2D, parser:AtlasParserBase):Texture2D
 		{
-			trace("atlasTexture2DFromParser");
+			//trace("atlasTexture2DFromParser");
 			// parse
 			parser.parse(texture2D);
 			

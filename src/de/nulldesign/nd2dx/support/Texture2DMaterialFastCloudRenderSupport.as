@@ -1,7 +1,9 @@
 package de.nulldesign.nd2dx.support 
 {
 	import de.nulldesign.nd2dx.components.Mesh2DRendererComponent;
+	import de.nulldesign.nd2dx.display.Camera2D;
 	import de.nulldesign.nd2dx.display.Node2D;
+	import de.nulldesign.nd2dx.display.Sprite2D;
 	import de.nulldesign.nd2dx.materials.BlendModePresets;
 	import de.nulldesign.nd2dx.materials.shader.Shader2D;
 	import de.nulldesign.nd2dx.materials.shader.ShaderCache;
@@ -9,17 +11,19 @@ package de.nulldesign.nd2dx.support
 	import de.nulldesign.nd2dx.materials.Texture2DMaterial;
 	import de.nulldesign.nd2dx.utils.NodeBlendMode;
 	import de.nulldesign.nd2dx.utils.Statistics;
+	import flash.display3D.Context3D;
 	import flash.display3D.Context3DProgramType;
 	import flash.display3D.Context3DVertexBufferFormat;
 	import flash.display3D.IndexBuffer3D;
 	import flash.display3D.VertexBuffer3D;
+	import flash.geom.Matrix3D;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
-	public class Texture2DMaterialCloudRenderSupport extends RenderSupportBase
+	public class Texture2DMaterialFastCloudRenderSupport
 	{
 		private const numFloatsPerVertex:uint = 8;
 		
@@ -29,10 +33,6 @@ package de.nulldesign.nd2dx.support
 			"alias va2, color;" +
 			
 			"alias vc0, viewProjection;" +
-			//"alias vc4, clipSpace;" +
-			
-			//"temp0 = mul4x4(position, clipSpace);" +
-			//"output = mul4x4(temp0, viewProjection);" +
 			"temp0 = position;" +
 			"output = mul4x4(temp0, viewProjection);" +
 			
@@ -46,7 +46,6 @@ package de.nulldesign.nd2dx.support
 			"	temp1.z = temp1.z * temp1.w;" +
 			"#endif;" +
 			
-			// pass to fragment shader
 			"v0 = temp0;" +
 			"v1 = temp1;";
 			
@@ -58,6 +57,13 @@ package de.nulldesign.nd2dx.support
 			"output = temp0;";
 			
 		
+		public var context:Context3D = null;
+		public var camera:Camera2D = null;
+		public var elapsed:Number = 0.0
+		public var deviceWasLost:Boolean = false;
+		public var viewProjectionMatrix:Matrix3D;
+		public var isPrepared:Boolean = false;
+			
 		protected var maxCapacity:uint;
 		
 		protected var shaderData:Shader2D;
@@ -67,8 +73,6 @@ package de.nulldesign.nd2dx.support
 		protected var mIndexBuffer:Vector.<uint>;
 		
 		public var totalNodes:int = 0;
-		public var parentNode:Node2D;
-		public var node:Node2D;
 		
 		public var currentScrollRect:Rectangle = null;
 		public var vScrollRects:Vector.<Rectangle> = new Vector.<Rectangle>();
@@ -145,7 +149,7 @@ package de.nulldesign.nd2dx.support
 		public var parentWorldModelMatrix_32:Number = 0.0;
 		public var parentWorldModelMatrix_33:Number = 0.0;
 		
-		public function Texture2DMaterialCloudRenderSupport() 
+		public function Texture2DMaterialFastCloudRenderSupport() 
 		{
 			maxCapacity = 1000;
 			
@@ -171,31 +175,29 @@ package de.nulldesign.nd2dx.support
 			mIndexBuffer = new Vector.<uint>(maxCapacity * 6, true);
 		}
 		
-		override public function prepare():void 
+		public function prepare():void 
 		{
-			isPrepared = true;
-			
 			vIdx = 0;
 			totalNodes = 0;
 			
-			parentNode = null;
-			currentScrollRect = null;
-			if ( vScrollRects.length ) vScrollRects.splice(0, vScrollRects.length);
+			//parentNode = null;
+			//currentScrollRect = null;
+			//if ( vScrollRects.length ) vScrollRects.splice(0, vScrollRects.length);
 			
-			parentWorldModelMatrix_00 = 1.0;
-			parentWorldModelMatrix_01 = 1.0;
+			//parentWorldModelMatrix_00 = 1.0;
+			//parentWorldModelMatrix_01 = 1.0;
 			//parentWorldModelMatrix_02 = 1.0;
 			//parentWorldModelMatrix_03 = 1.0;
-			parentWorldModelMatrix_10 = 1.0;
-			parentWorldModelMatrix_11 = 1.0;
+			//parentWorldModelMatrix_10 = 1.0;
+			//parentWorldModelMatrix_11 = 1.0;
 			//parentWorldModelMatrix_12 = 1.0;
 			//parentWorldModelMatrix_13 = 1.0;
 			//parentWorldModelMatrix_20 = 1.0;
 			//parentWorldModelMatrix_21 = 1.0;
 			//parentWorldModelMatrix_22 = 1.0;
 			//parentWorldModelMatrix_23 = 1.0;
-			parentWorldModelMatrix_30 = 0.0;
-			parentWorldModelMatrix_31 = 0.0;
+			//parentWorldModelMatrix_30 = 0.0;
+			//parentWorldModelMatrix_31 = 0.0;
 			//parentWorldModelMatrix_32 = 0.0;
 			//parentWorldModelMatrix_33 = 0.0;
 			
@@ -227,36 +229,30 @@ package de.nulldesign.nd2dx.support
 			}
 		}
 		
-		override public function setScrollRect(node:Node2D):void 
+		//public function setScrollRect(node:Node2D):void 
+		//{
+			//drawCloud();
+			//
+			//node.checkAndUpdateMatrixIfNeeded();
+			//
+			//currentScrollRect = node.worldScrollRect;
+			//vScrollRects.push(currentScrollRect);
+		//}
+		
+		public function drawChildren(childFirst:Node2D):void
 		{
-			drawCloud();
-			
-			node.checkAndUpdateMatrixIfNeeded();
-			
-			currentScrollRect = node.worldScrollRect;
-			vScrollRects.push(currentScrollRect);
+			for (var child:Node2D = childFirst; child; child = child.next)
+			{
+				drawChild(child);
+			}
 		}
 		
-		override public function drawMesh(meshRenderer:Mesh2DRendererComponent):void 
+		public function drawChild(node:Node2D):void 
 		{
-			node = meshRenderer.node;
-			material = meshRenderer.material as Texture2DMaterial;
-			texture = material.texture;
+			//material = node.mesh2DRendererComponent.material as Texture2DMaterial;
+			//texture = material.texture;
 			
-			if ( !parentNode || node.parent != parentNode )
-			{
-				parentNode = node.parent;
-				updateNewParentData();
-			}
-			
-			// update matrix of this node if it has children
-			if ( node._numChildren && !node.matrixUpdated ) node.checkAndUpdateMatrixIfNeeded();
-			
-			// if it has a scrollRect, draw current batch and start a new one
-			if ( node.localScrollRect )
-			{
-				setScrollRect(node);
-			}
+			node.step(elapsed)
 			
 			// POSITION
 			sx = node._scaleX * material.width;
@@ -314,6 +310,21 @@ package de.nulldesign.nd2dx.support
 			// v4
 			mVertexBuffer[int(vIdx + 24)] = parentWorldModelMatrix_00 * v4x_prep + parentWorldModelMatrix_10 * v4y_prep + parentWorldModelMatrix_30;
 			mVertexBuffer[int(vIdx + 25)] = parentWorldModelMatrix_01 * v4x_prep + parentWorldModelMatrix_11 * v4y_prep + parentWorldModelMatrix_31;
+			
+			/*mVertexBuffer[int(vIdx)] = 100;// parentWorldModelMatrix_00 * v1x_prep + parentWorldModelMatrix_10 * v1y_prep + parentWorldModelMatrix_30;
+			mVertexBuffer[int(vIdx + 1)] = 100;// parentWorldModelMatrix_01 * v1x_prep + parentWorldModelMatrix_11 * v1y_prep + parentWorldModelMatrix_31;
+			
+			// v2
+			mVertexBuffer[int(vIdx + 8)] = 200;// parentWorldModelMatrix_00 * v2x_prep + parentWorldModelMatrix_10 * v2y_prep + parentWorldModelMatrix_30;
+			mVertexBuffer[int(vIdx + 9)] = 100;// parentWorldModelMatrix_01 * v2x_prep + parentWorldModelMatrix_11 * v2y_prep + parentWorldModelMatrix_31;
+			
+			// v3
+			mVertexBuffer[int(vIdx + 16)] = 200;// parentWorldModelMatrix_00 * v3x_prep + parentWorldModelMatrix_10 * v3y_prep + parentWorldModelMatrix_30;
+			mVertexBuffer[int(vIdx + 17)] = 200;// parentWorldModelMatrix_01 * v3x_prep + parentWorldModelMatrix_11 * v3y_prep + parentWorldModelMatrix_31;
+			
+			// v4
+			mVertexBuffer[int(vIdx + 24)] = 100;// parentWorldModelMatrix_00 * v4x_prep + parentWorldModelMatrix_10 * v4y_prep + parentWorldModelMatrix_30;
+			mVertexBuffer[int(vIdx + 25)] = 200;// parentWorldModelMatrix_01 * v4x_prep + parentWorldModelMatrix_11 * v4y_prep + parentWorldModelMatrix_31;*/
 			
 			//trace(mVertexBuffer[int(vIdx)], mVertexBuffer[int(vIdx + 1)], mVertexBuffer[int(vIdx + 8)], mVertexBuffer[int(vIdx + 9)], mVertexBuffer[int(vIdx + 16)], mVertexBuffer[int(vIdx + 17)], mVertexBuffer[int(vIdx + 24)], mVertexBuffer[int(vIdx + 25)]);
 			
@@ -391,50 +402,50 @@ package de.nulldesign.nd2dx.support
 			}
 		}
 		
-		override public function endDrawNode(node:Node2D):void 
-		{
-			if ( node.localScrollRect )
-			{
-				var index:int = vScrollRects.indexOf(node.worldScrollRect);
-				
-				if ( index >= 0 )
-				{
-					vScrollRects.splice(index, 1);
-				}
-				
-				drawCloud();
-				
-				if ( vScrollRects.length )
-				{
-					currentScrollRect = vScrollRects[vScrollRects.length - 1];
-				}
-				else
-				{
-					currentScrollRect = null;
-				}
-			}
-		}
+		//override public function endDrawNode(node:Node2D):void 
+		//{
+			//if ( node.localScrollRect )
+			//{
+				//var index:int = vScrollRects.indexOf(node.worldScrollRect);
+				//
+				//if ( index >= 0 )
+				//{
+					//vScrollRects.splice(index, 1);
+				//}
+				//
+				//drawCloud();
+				//
+				//if ( vScrollRects.length )
+				//{
+					//currentScrollRect = vScrollRects[vScrollRects.length - 1];
+				//}
+				//else
+				//{
+					//currentScrollRect = null;
+				//}
+			//}
+		//}
 		
-		public function updateNewParentData():void
+		public function updateNewParentData(parentNode:Node2D):void
 		{
 			parentWorldModelMatrixVector = parentNode.worldModelMatrix.rawData;
 			
 			parentWorldModelMatrix_00 = parentWorldModelMatrixVector[0];
 			parentWorldModelMatrix_01 = parentWorldModelMatrixVector[1];
-			//parentWorldModelMatrix_02 = parentWorldModelMatrixVector[2];
-			//parentWorldModelMatrix_03 = parentWorldModelMatrixVector[3];
+			parentWorldModelMatrix_02 = parentWorldModelMatrixVector[2];
+			parentWorldModelMatrix_03 = parentWorldModelMatrixVector[3];
 			parentWorldModelMatrix_10 = parentWorldModelMatrixVector[4];
 			parentWorldModelMatrix_11 = parentWorldModelMatrixVector[5];
-			//parentWorldModelMatrix_12 = parentWorldModelMatrixVector[6];
-			//parentWorldModelMatrix_13 = parentWorldModelMatrixVector[7];
-			//parentWorldModelMatrix_20 = parentWorldModelMatrixVector[8];
-			//parentWorldModelMatrix_21 = parentWorldModelMatrixVector[9];
-			//parentWorldModelMatrix_22 = parentWorldModelMatrixVector[10];
-			//parentWorldModelMatrix_23 = parentWorldModelMatrixVector[11];
+			parentWorldModelMatrix_12 = parentWorldModelMatrixVector[6];
+			parentWorldModelMatrix_13 = parentWorldModelMatrixVector[7];
+			parentWorldModelMatrix_20 = parentWorldModelMatrixVector[8];
+			parentWorldModelMatrix_21 = parentWorldModelMatrixVector[9];
+			parentWorldModelMatrix_22 = parentWorldModelMatrixVector[10];
+			parentWorldModelMatrix_23 = parentWorldModelMatrixVector[11];
 			parentWorldModelMatrix_30 = parentWorldModelMatrixVector[12];
 			parentWorldModelMatrix_31 = parentWorldModelMatrixVector[13];
-			//parentWorldModelMatrix_32 = parentWorldModelMatrixVector[14];
-			//parentWorldModelMatrix_33 = parentWorldModelMatrixVector[15];
+			parentWorldModelMatrix_32 = parentWorldModelMatrixVector[14];
+			parentWorldModelMatrix_33 = parentWorldModelMatrixVector[15];
 		}
 		
 		public function drawCloud():void
@@ -443,7 +454,7 @@ package de.nulldesign.nd2dx.support
 			
 			if (!shaderData)
 			{
-				var defines:Array = ["Texture2DCloud"];
+				var defines:Array = ["Texture2DFastCloud"];
 				
 				shaderData = ShaderCache.getShader(context, defines, VERTEX_SHADER, FRAGMENT_SHADER, texture);
 			}
@@ -462,14 +473,14 @@ package de.nulldesign.nd2dx.support
 			
 			context.setProgramConstantsFromMatrix(Context3DProgramType.VERTEX, 0, viewProjectionMatrix, true);
 			
-			if ( currentScrollRect )
-			{
-				context.setScissorRectangle(currentScrollRect);
-			}
+			context.setScissorRectangle(null);
+			//if ( currentScrollRect )
+			//{
+				//context.setScissorRectangle(currentScrollRect);
+			//}
 			
 			context.drawTriangles(indexBuffer, 0, totalNodes << 1);
 			
-			Statistics.triangles += totalNodes << 1;
 			Statistics.sprites += totalNodes;
 			Statistics.drawCalls++;
 			
@@ -482,7 +493,7 @@ package de.nulldesign.nd2dx.support
 			totalNodes = 0;
 		}
 		
-		override public function finalize():void 
+		public function finalize():void 
 		{
 			drawCloud();
 		}

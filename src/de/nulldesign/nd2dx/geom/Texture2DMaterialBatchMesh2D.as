@@ -36,14 +36,18 @@ package de.nulldesign.nd2dx.geom
 					mVertexBuffer.push(vertex.u);
 					mVertexBuffer.push(vertex.v);
 					
-					// first id (we start at offset 4 -> viewProjection matrix 4 constants needed for that) and we * by 8 as we have 8 contants per distinct mesh/shape
+					// first id (we start at offset 4 -> viewProjection matrix 4 constants needed for that) and we * by 4 as we have 4 contants per matrix
 					idx = 4 + (i * 4);
 					mVertexBuffer.push(idx); // this one is gonna hold our clipspace matrix (4 constants again)
 					
-					idx = 4 + (numMeshes * 4) + (i * 2);
+					idx = 4 + (numMeshes * 4) + (i * 3);
 					mVertexBuffer.push(idx); // uvSheet (1 constant)
+					
 					idx += 1;
 					mVertexBuffer.push(idx); // uvScroll (1 constant)
+					
+					idx += 1;
+					mVertexBuffer.push(idx); // color (1 constant)
 				}
 				
 				idx = i * 4;
@@ -55,7 +59,7 @@ package de.nulldesign.nd2dx.geom
 				mIndexBuffer.push(indexList[5] + idx);
 			}
 			
-			numFloatsPerVertex = 7;
+			numFloatsPerVertex = 8;
 			numVertices = mVertexBuffer.length / numFloatsPerVertex;
 			numIndices = mIndexBuffer.length;
 			numTriangles = numIndices / 3;

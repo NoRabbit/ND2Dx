@@ -18,9 +18,9 @@ package de.nulldesign.nd2dx.support
 		
 		override public function drawMesh(meshRenderer:Mesh2DRendererComponent):void 
 		{
+			meshRenderer.node.checkAndUpdateMatrixIfNeeded();
 			material = meshRenderer.material;
-			//material.viewProjectionMatrix = viewProjectionMatrix;
-			material.viewProjectionMatrix = camera.getViewProjectionMatrix(false);
+			material.viewProjectionMatrix = viewProjectionMatrix;
 			material.render(context);
 		}
 	}

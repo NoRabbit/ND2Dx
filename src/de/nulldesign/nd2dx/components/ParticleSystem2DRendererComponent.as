@@ -4,6 +4,8 @@ package de.nulldesign.nd2dx.components
 	import de.nulldesign.nd2dx.geom.ParticleSystem2DMesh2D;
 	import de.nulldesign.nd2dx.materials.MaterialBase;
 	import de.nulldesign.nd2dx.materials.ParticleSystem2DMaterial;
+	import de.nulldesign.nd2dx.support.MainRenderSupport;
+	import de.nulldesign.nd2dx.support.RenderSupportBase;
 	import de.nulldesign.nd2dx.utils.MeshUtil;
 	import de.nulldesign.nd2dx.utils.ParticleSystem2DPreset;
 	import flash.geom.Point;
@@ -16,14 +18,16 @@ package de.nulldesign.nd2dx.components
 		public var particleSystem2DMaterial:ParticleSystem2DMaterial;
 		public var particleSystem2DMesh2D:ParticleSystem2DMesh2D;
 		private var _preset:ParticleSystem2DPreset;
-		private var _numParticles:uint = 0;
+		private var _numParticles:uint = 50;
 		
 		public var invalidateParticles:Boolean = true;
+		public var mainRenderSupport:MainRenderSupport;
 		
 		public function ParticleSystem2DRendererComponent() 
 		{
+			mainRenderSupport = renderSupportManager.mainRenderSupport;
 			material = new ParticleSystem2DMaterial();
-			mesh = MeshUtil.generateMesh2D(1, 1, 2, 2, ParticleSystem2DMesh2D);
+			mesh = MeshUtil.generateMesh2D(1, 1, 1, 1, ParticleSystem2DMesh2D);
 			preset = new ParticleSystem2DPreset();
 		}
 		
@@ -73,6 +77,21 @@ package de.nulldesign.nd2dx.components
 			{
 				isActive = false;
 			}
+		}
+		
+		override public function draw(renderSupport:RenderSupportBase):void 
+		{
+			if ( _mesh.needUploadVertexBuffer ) _mesh.uploadBuffers(renderSupport.context);
+			
+			renderSupport.finalize();
+			
+			mainRenderSupport.elapsed = renderSupport.elapsed;
+			mainRenderSupport.camera = renderSupport.camera;
+			mainRenderSupport.viewProjectionMatrix = renderSupport.viewProjectionMatrix;
+			mainRenderSupport.context = renderSupport.context;
+			mainRenderSupport.deviceWasLost = renderSupport.deviceWasLost;
+			
+			mainRenderSupport.drawMesh(this);
 		}
 		
 		public function updateParticles():void

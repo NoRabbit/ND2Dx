@@ -31,8 +31,11 @@
 package de.nulldesign.nd2dx.display {
 
 	import de.nulldesign.nd2dx.components.ComponentBase;
+	import de.nulldesign.nd2dx.components.Mesh2DRendererComponent;
 	import de.nulldesign.nd2dx.geom.Vector2D;
 	import de.nulldesign.nd2dx.support.RenderSupportBase;
+	import de.nulldesign.nd2dx.support.RenderSupportManager;
+	import de.nulldesign.nd2dx.utils.NumberUtil;
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getQualifiedClassName;
 	import flash.utils.getQualifiedSuperclassName;
@@ -56,14 +59,18 @@ package de.nulldesign.nd2dx.display {
 	 */
 	public class Node2D
 	{
+		public var renderSupportManager:RenderSupportManager = RenderSupportManager.getInstance();
+		
 		public var id:String = "";
 		public var name:String = "";
 		
-		public var performMatrixCalculations:Boolean = true;
 		public var localModelMatrix:Matrix3D = new Matrix3D();
 		public var worldModelMatrix:Matrix3D = new Matrix3D();
 		
+		public var matrixUpdated:Boolean = false;
 		public var invalidateMatrix:Boolean = true;
+		public var invalidateScrollRect:Boolean = true;
+		public var useScrollRect:Boolean = false;
 		public var invalidateColors:Boolean = true;
 		
 		public var _numChildren:uint = 0;
@@ -73,13 +80,20 @@ package de.nulldesign.nd2dx.display {
 		public var prev:Node2D = null;
 		public var next:Node2D = null;
 		
+		// custom render support
+		public var customRenderSupport:RenderSupportBase;
+		public var finalizeRenderSupport:Boolean = false;
+		
 		// components
 		public var numComponents:int = 0;
 		public var componentFirst:ComponentBase = null;
 		public var componentLast:ComponentBase = null;
+		public var hasMesh2DRendererComponent:Boolean = false;
 		
 		public var camera:Camera2D;
 		
+		public var mousePropagate:Boolean = true;
+		public var mousePropagateOnce:Boolean = true;
 		protected var _mouseEnabled:Boolean = false;
 		
 		public function get mouseEnabled():Boolean 
@@ -248,7 +262,7 @@ package de.nulldesign.nd2dx.display {
 			}
 		}
 		
-		protected var _scaleX:Number = 1.0;
+		public var _scaleX:Number = 1.0;
 		
 		public function set scaleX(value:Number):void
 		{
@@ -264,7 +278,7 @@ package de.nulldesign.nd2dx.display {
 			return _scaleX;
 		}
 		
-		protected var _scaleY:Number = 1.0;
+		public var _scaleY:Number = 1.0;
 		
 		public function set scaleY(value:Number):void
 		{
@@ -356,10 +370,10 @@ package de.nulldesign.nd2dx.display {
 		
 		public function set scrollRect(value:Rectangle):void
 		{
-			if (!localScrollRect || localScrollRect.x != value.x || localScrollRect.y != value.y || localScrollRect.width != value.width || localScrollRect.height != value.height)
+			if ( (localScrollRect && value == null) || !localScrollRect || localScrollRect.x != value.x || localScrollRect.y != value.y || localScrollRect.width != value.width || localScrollRect.height != value.height)
 			{
 				localScrollRect = value;
-				invalidateMatrix = true;
+				invalidateScrollRect = true;
 			}
 		}
 		
@@ -465,7 +479,7 @@ package de.nulldesign.nd2dx.display {
 		
 		public function get onMouseEvent():Signal 
 		{
-			if ( !_onMouseEvent ) _onMouseEvent = new Signal(String, Node2D, MouseEvent);
+			if ( !_onMouseEvent ) _onMouseEvent = new Signal(String, Node2D, Node2D, MouseEvent);
 			return _onMouseEvent;
 		}
 		
@@ -508,37 +522,57 @@ package de.nulldesign.nd2dx.display {
 			worldModelMatrix.identity();
 			worldModelMatrix.append(localModelMatrix);
 			
-			if (parent)
+			if ( parent )
 			{
 				worldModelMatrix.append(parent.worldModelMatrix);
 			}
-			
-			updateScrollRect();
 		}
 		
 		public function updateScrollRect():void
 		{
-			if (localScrollRect) 
+			invalidateScrollRect = false;
+			
+			if ( localScrollRect ) 
 			{
-				var pos:Point = localToWorld(new Point(-localScrollRect.width >> 1, -localScrollRect.height >> 1));
+				var pos:Point = localToWorld(new Point(localScrollRect.x, localScrollRect.y));
 				worldScrollRect = localScrollRect.clone();
 				worldScrollRect.x = pos.x;
 				worldScrollRect.y = pos.y;
+				pos.x = localScrollRect.x + localScrollRect.width;
+				pos.y = localScrollRect.y + localScrollRect.height;
+				pos = localToWorld(pos);
+				worldScrollRect.width = pos.x - worldScrollRect.x;
+				worldScrollRect.height = pos.y - worldScrollRect.y;
 				
-				if (parent && parent.worldScrollRect)
+				if ( parent && parent.useScrollRect )
 				{
 					worldScrollRect = worldScrollRect.intersection(parent.worldScrollRect);
 				}
 				
+				useScrollRect = true;
+				
+				var w:Number = world.bounds ? world.bounds.width : stage.stageWidth;
+				var h:Number = world.bounds ? world.bounds.height : stage.stageHeight;
+				
+				if ( worldScrollRect.width < 1 || worldScrollRect.height < 1 || worldScrollRect.x + worldScrollRect.width < 1 || worldScrollRect.x >= w || worldScrollRect.y + worldScrollRect.height < 1 || worldScrollRect.y >= h )
+				{
+					//useScrollRect = false;
+					worldScrollRect.x = 0;
+					worldScrollRect.y = 0;
+					worldScrollRect.width = 1;
+					worldScrollRect.height = 1;
+				}
 			}
-			else if (parent && parent.worldScrollRect)
+			else if ( parent && parent.useScrollRect )
 			{
 				worldScrollRect = parent.worldScrollRect.clone();
+				useScrollRect = true;
 			}
-			
-			if (localScrollRect)
+			else
 			{
-				worldModelMatrix.prependTranslation(-localScrollRect.x, -localScrollRect.y, 0);
+				useScrollRect = false;
+				localScrollRect = null;
+				worldScrollRect = null;
 			}
 		}
 		
@@ -673,6 +707,8 @@ package de.nulldesign.nd2dx.display {
 		
 		public function drawNode(renderSupport:RenderSupportBase):void 
 		{
+			//renderSupport = renderSupportManager.currentRenderSupport;
+			
 			// step components first
 			for (var component:ComponentBase = componentFirst; component; component = component.next)
 			{
@@ -696,34 +732,79 @@ package de.nulldesign.nd2dx.display {
 					combinedAlpha *= parent.combinedAlpha;
 				}
 				
+				// set this to true so children can update their values as well
 				invalidateColors = true;
 			}
 			
 			// perform matrix calculations and draw only if visible
 			if ( _visible )
 			{
-				if (performMatrixCalculations && (invalidateMatrix || (parent && parent.invalidateMatrix)))
+				if ( customRenderSupport && customRenderSupport != renderSupport )
 				{
-					if (invalidateMatrix)
-					{
-						updateLocalMatrix();
-					}
-					
-					updateWorldMatrix();
-					
-					invalidateMatrix = true;
+					// change current render support (this is needed so we can call the final "finalize" function in World2D)
+					renderSupport = renderSupportManager.setCurrentRenderSupport(renderSupport, customRenderSupport);
+					finalizeRenderSupport = true;
 				}
 				
-				draw(renderSupport);
+				// check first if we have a component that will draw anything
+				if ( !hasMesh2DRendererComponent )
+				{
+					// no, so update matrix if needed
+					checkAndUpdateMatrixIfNeeded();
+					
+					if ( localScrollRect ) renderSupport.setScrollRect(this);
+				}
+				else
+				{
+					// render support is in charge of updating matrix if needed
+					draw(renderSupport);
+				}
 				
 				for (var child:Node2D = childFirst; child; child = child.next)
 				{
 					child.drawNode(renderSupport);
 				}
+				
+				if ( finalizeRenderSupport )
+				{
+					finalizeRenderSupport = false;
+					renderSupport.finalize();
+				}
+				
+				renderSupport.endDrawNode(this);
+				
+				invalidateMatrix = false;
+				invalidateScrollRect = false;
+				invalidateColors = false;
+				matrixUpdated = false;
 			}
-			
-			invalidateMatrix = false;
-			invalidateColors = false;
+		}
+		
+		public function checkAndUpdateMatrixIfNeeded():void
+		{
+			if ( invalidateMatrix || (parent && parent.invalidateMatrix) )
+			{
+				if (invalidateMatrix)
+				{
+					updateLocalMatrix();
+				}
+				
+				updateWorldMatrix();
+				
+				updateScrollRect();
+				
+				// set this to true so children can update their values as well
+				invalidateMatrix = true;
+				invalidateScrollRect = true;
+				
+				// so we don't update matrix more than needed
+				matrixUpdated = true;
+			}
+			else if ( invalidateScrollRect || (parent && parent.invalidateScrollRect) )
+			{
+				updateScrollRect();
+				invalidateScrollRect = true;
+			}
 		}
 		
 		public function step(elapsed:Number):void 
@@ -995,7 +1076,7 @@ package de.nulldesign.nd2dx.display {
 		public function addComponent(component:ComponentBase):ComponentBase 
 		{
 			if (component.node) 
-			{				
+			{
 				component.node.removeComponent(component);
 			}
 			
@@ -1012,6 +1093,8 @@ package de.nulldesign.nd2dx.display {
 			}
 			
 			numComponents++;
+			
+			if ( component is Mesh2DRendererComponent ) hasMesh2DRendererComponent = true;
 			
 			component.setReferences(stage, camera, world, scene, this);
 			component.onAddedToNode();
@@ -1034,6 +1117,16 @@ package de.nulldesign.nd2dx.display {
 			unlinkComponent(component);
 			
 			numComponents--;
+			
+			// go through all remaining component and check if one of them is a mesh2drenderercomponent
+			for (var componentInList:ComponentBase = componentFirst; componentInList; componentInList = componentInList.next)
+			{
+				if ( componentInList is Mesh2DRendererComponent )
+				{
+					hasMesh2DRendererComponent = true;
+					break;
+				}
+			}
 			
 			component.setReferences(null, null, null, null, null);
 			

@@ -243,8 +243,8 @@ package de.nulldesign.nd2dx.materials
 			programConstants[10] = currentTime;
 			programConstants[11] = 0.0;
 			
-			programConstants[12] = _width >> 1;
-			programConstants[13] = _height >> 1;
+			programConstants[12] = _width;
+			programConstants[13] = _height;
 			programConstants[14] = frameOffsetX;
 			programConstants[15] = frameOffsetY;
 			
@@ -275,9 +275,7 @@ package de.nulldesign.nd2dx.materials
 			{
 				var defines:Array = ["TextureMaterial",
 					"BURST", isBurst,
-					"USE_UV", false,
-					"USE_COLOR", false,
-					"USE_COLOR_OFFSET", false];
+					"USE_UV", useUV];
 					
 				shaderData = ShaderCache.getShader(context, defines, VERTEX_SHADER, FRAGMENT_SHADER, texture);
 			}

@@ -28,10 +28,13 @@
  * THE SOFTWARE.
  */
 
-package de.nulldesign.nd2dx.utils {
+package de.nulldesign.nd2dx.utils
+{
 
-	public class NumberUtil {
-
+	public class NumberUtil
+	{
+		public static const DEG2RAD:Number = Math.PI / 180;
+		
 		/**
 		 * Forces a number into a specified range.
 		 *

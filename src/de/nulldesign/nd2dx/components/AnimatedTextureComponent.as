@@ -123,8 +123,8 @@ package de.nulldesign.nd2dx.components
 			_material.uvRect = currentTexture.uvRect;
 			_material.frameOffsetX = currentTexture.frameOffsetX;
 			_material.frameOffsetY = currentTexture.frameOffsetY;
-			_material.textureBitmapWidth = currentTexture.textureWidth;
-			_material.textureBitmapHeight = currentTexture.textureHeight;
+			_material.width = currentTexture.textureWidth;
+			_material.height = currentTexture.textureHeight;
 			
 			_material.invalidateClipSpace = true;
 		}

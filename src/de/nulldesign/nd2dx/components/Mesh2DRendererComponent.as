@@ -4,6 +4,7 @@ package de.nulldesign.nd2dx.components
 	import de.nulldesign.nd2dx.materials.MaterialBase;
 	import de.nulldesign.nd2dx.materials.texture.Texture2D;
 	import de.nulldesign.nd2dx.support.RenderSupportBase;
+	import de.nulldesign.nd2dx.support.RenderSupportManager;
 	import flash.geom.Matrix3D;
 	/**
 	 * ...
@@ -11,8 +12,10 @@ package de.nulldesign.nd2dx.components
 	 */
 	public class Mesh2DRendererComponent extends ComponentBase
 	{
-		private var _mesh:Mesh2D = null;
-		private var _material:MaterialBase = null;
+		public var renderSupportManager:RenderSupportManager = RenderSupportManager.getInstance();
+		
+		protected var _mesh:Mesh2D = null;
+		protected var _material:MaterialBase = null;
 		
 		public function Mesh2DRendererComponent() 
 		{
@@ -60,7 +63,7 @@ package de.nulldesign.nd2dx.components
 		
 		override public function draw(renderSupport:RenderSupportBase):void 
 		{
-			if ( mesh.needUploadVertexBuffer ) mesh.uploadBuffers(renderSupport.context);
+			if ( _mesh.needUploadVertexBuffer ) _mesh.uploadBuffers(renderSupport.context);
 			
 			renderSupport.drawMesh(this);
 		}

@@ -111,7 +111,7 @@ package de.nulldesign.nd2dx.materials
 		
 		protected function prepareForRender(context:Context3D):void 
 		{
-			if ( invalidateClipSpace || _node.invalidateMatrix ) updateClipSpace();
+			if ( invalidateClipSpace || _node.matrixUpdated ) updateClipSpace();
 			context.setBlendFactors(blendMode.src, blendMode.dst);
 			updateProgram(context);
 		}
