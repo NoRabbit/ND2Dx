@@ -30,13 +30,13 @@
 
 package de.nulldesign.nd2dx.display 
 {	
-	import de.nulldesign.nd2dx.materials.shader.ShaderCache;
-	import de.nulldesign.nd2dx.support.MainRenderSupport;
-	import de.nulldesign.nd2dx.support.RenderSupportBase;
-	import de.nulldesign.nd2dx.support.RenderSupportManager;
+	import com.rabbitframework.managers.pool.PoolManager;
+	import de.nulldesign.nd2dx.managers.resource.ResourceManager;
+	import de.nulldesign.nd2dx.renderers.RendererBase;
+	import de.nulldesign.nd2dx.renderers.TexturedMeshCloudRenderer;
+	import de.nulldesign.nd2dx.signals.MouseSignal;
 	import de.nulldesign.nd2dx.utils.Statistics;
-	import de.nulldesign.nd2dx.utils.WorldUtil;
-	import org.osflash.signals.Signal;
+	import flash.display3D.Context3DProfile;
 
 	import flash.display.Sprite;
 	import flash.display3D.Context3D;
@@ -60,47 +60,28 @@ package de.nulldesign.nd2dx.display
 	 */
 	[Event(name="init", type="flash.events.Event")]
 
-	/**
-	 * <p>Baseclass for ND2D</p>
-	 * Extend this class and add your own scenes and sprites
-	 *
-	 * Set up your project like this:
-	 * <ul>
-	 * <li>MyGameWorld2D</li>
-	 * <li>- MyStartScene2D</li>
-	 * <li>-- StartButtonSprite2D</li>
-	 * <li>-- ...</li>
-	 * <li>- MyGameScene2D</li>
-	 * <li>-- GameSprites2D</li>
-	 * <li>-- ...</li>
-	 * </ul>
-	 * <p>Put your game logic in the step() method of each scene / node</p>
-	 *
-	 * You can switch between scenes with the setActiveScene method of World2D.
-	 * There can be only one active scene.
-	 *
-	 */
-	public class World2D extends Sprite 
+	public class World2D extends Sprite
 	{
-		public var renderSupportManager:RenderSupportManager = RenderSupportManager.getInstance();
+		public var resourceManager:ResourceManager = ResourceManager.getInstance();
+		public var poolManager:PoolManager = PoolManager.getInstance();
 		
 		public var antiAliasing:uint = 0;
-		public var depthAndStencil:Boolean = false;
-		public var enableErrorChecking:Boolean = true;
+		public var depthAndStencil:Boolean = true;
+		public var enableErrorChecking:Boolean = false;
 
 		public var timeSinceStartInSeconds:Number = 0.0;
 
 		public var camera:Camera2D = new Camera2D(1, 1);
 		public var context3D:Context3D;
 		public var stageID:uint;
-		protected var scene:Scene2D;
+		protected var _scene:Scene2D;
 		protected var frameRate:uint;
 		protected var isPaused:Boolean = false;
 		public var bounds:Rectangle;
 		protected var lastFramesTime:Number = 0.0;
 
 		protected var renderMode:String;
-		protected var profile:String = "baseline";
+		protected var profile:String = Context3DProfile.BASELINE;
 		protected var mousePosition:Vector3D = new Vector3D(0.0, 0.0, 0.0);
 		protected var deviceInitialized:Boolean = false;
 		public var deviceWasLost:Boolean = false;
@@ -108,9 +89,9 @@ package de.nulldesign.nd2dx.display
 		public var mouseInNode:Node2D = null;
 		public var mouseDownInNode:Node2D = null;
 		
-		public var renderSupport:RenderSupportBase;
+		public var mouseSignal:MouseSignal = new MouseSignal();
 		
-		public var onInit:Signal = new Signal(World2D);
+		private var _renderer:RendererBase;
 		
 		/**
 		 * Constructor of class world
@@ -120,20 +101,15 @@ package de.nulldesign.nd2dx.display
 		 * @param bounds the worlds boundaries
 		 * @param stageID
 		 */
-		public function World2D(renderMode:String = Context3DRenderMode.AUTO, frameRate:uint = 60, bounds:Rectangle = null, stageID:uint = 0, renderSupport:RenderSupportBase = null)
+		public function World2D(renderMode:String = Context3DRenderMode.AUTO, frameRate:uint = 60, bounds:Rectangle = null, stageID:uint = 0, renderer:RendererBase = null)
 		{
-			WorldUtil.world2D = this;
-			
 			this.renderMode = renderMode;
 			this.frameRate = frameRate;
 			this.bounds = bounds;
 			this.stageID = stageID;
 			
-			if ( !renderSupport ) renderSupport = renderSupportManager.mainRenderSupport;
-			renderSupport.camera = camera;
-			
-			this.renderSupport = renderSupport;
-			renderSupportManager.currentRenderSupport = this.renderSupport;
+			if ( !renderer ) renderer = new TexturedMeshCloudRenderer();
+			this.renderer = renderer;
 			
 			addEventListener(Event.ADDED_TO_STAGE, addedToStage);
 		}
@@ -141,14 +117,11 @@ package de.nulldesign.nd2dx.display
 		protected function addedToStage(event:Event):void 
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, addedToStage);
-			
-			WorldUtil.stage = stage;
-			
 			stage.addEventListener(Event.RESIZE, resizeStage);
 			stage.frameRate = frameRate;
 			
 			checkForContext();
-
+			
 			Statistics.stage = stage;
 		}
 		
@@ -196,9 +169,10 @@ package de.nulldesign.nd2dx.display
 			context3D = stage.stage3Ds[stageID].context3D;
 			context3D.enableErrorChecking = enableErrorChecking;
 			context3D.setCulling(Context3DTriangleFace.NONE);
-			context3D.setDepthTest(false, Context3DCompareMode.ALWAYS);
+			//context3D.setDepthTest(true, Context3DCompareMode.LESS_EQUAL);
+			context3D.setDepthTest(true, Context3DCompareMode.ALWAYS);
 			
-			renderSupport.context = context3D;
+			_renderer.init(context3D, camera);
 			
 			Statistics.driverInfo = context3D.driverInfo;
 			Statistics.isAccelerated = context3D.driverInfo.toLowerCase().indexOf("software") == -1;
@@ -214,24 +188,23 @@ package de.nulldesign.nd2dx.display
 			
 			// means we got the Event.CONTEXT3D_CREATE for the second time, the device was lost. reinit everything
 			if (deviceInitialized) 
-			{				
-				deviceWasLost = true;
-				renderSupport.deviceWasLost = true;
+			{
+				_renderer.deviceWasLost = deviceWasLost = true;
 			}
 			
 			deviceInitialized = true;
 			
-			if (scene) 
+			if (_scene) 
 			{
-				scene.setReferences(stage, camera, this, scene);
+				_scene.setReferences(stage, camera, this, _scene);
 			}
 			
-			onInit.dispatch(this);
+			dispatchEvent(new Event(Event.INIT));
 		}
 		
 		protected function mouseEventHandler(event:MouseEvent):void 
 		{
-			if ( scene && ( scene.mouseChildren || scene.mouseEnabled ) && stage && camera ) 
+			if ( _scene && ( _scene.mouseChildren || _scene.mouseEnabled ) && stage && camera ) 
 			{
 				// transformation of normalized coordinates between -1 and 1
 				mousePosition.x = (stage.mouseX - (bounds ? bounds.x : 0.0)) / camera.sceneWidth * 2.0 - 1.0;
@@ -239,16 +212,16 @@ package de.nulldesign.nd2dx.display
 				mousePosition.z = 0.0;
 				mousePosition.w = 1.0;
 				
-				var mouseNode:Node2D = scene.processMouseEvent(mousePosition, event, camera.getViewProjectionMatrix());
+				var mouseNode:Node2D = _scene.processMouseEvent(mousePosition, event, camera.getViewProjectionMatrix(true));
 				
 				if ( mouseNode )
 				{
 					// update mouse position
-					mouseNode.updateMousePosition(mousePosition, camera.getViewProjectionMatrix());
+					mouseNode.updateMousePosition(mousePosition, camera.getViewProjectionMatrix(true));
 					
 					if ( mouseInNode && mouseInNode != mouseNode )
 					{
-						dispatchMouseEventInNodeAndItsParents(mouseInNode, MouseEvent.MOUSE_OUT, null, event);
+						dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_OUT, mouseNode, mouseInNode, event);
 						mouseInNode = null;
 					}
 					
@@ -257,15 +230,15 @@ package de.nulldesign.nd2dx.display
 						if ( mouseInNode )
 						{
 							// mouse is moving inside node
-							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_MOVE, mouseNode, event);
+							dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_MOVE, mouseNode, mouseNode, event);
 						}
 						else
 						{
 							// mouse just entered node
-							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_OVER, mouseNode, event);
+							dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_OVER, mouseNode, mouseNode, event);
 							
 							// and is also moving inside
-							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_MOVE, mouseNode, event);
+							dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_MOVE, mouseNode, mouseNode, event);
 						}
 					}
 					else
@@ -274,7 +247,7 @@ package de.nulldesign.nd2dx.display
 						{
 							// mouse is down in node
 							mouseDownInNode = mouseNode
-							dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_DOWN, mouseNode, event);
+							dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_DOWN, mouseNode, mouseNode, event);
 						}
 						else if ( event.type == MouseEvent.MOUSE_UP )
 						{
@@ -282,20 +255,20 @@ package de.nulldesign.nd2dx.display
 							if ( mouseDownInNode == mouseNode )
 							{
 								// dispatch mouse up
-								dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_UP, mouseNode, event);
+								dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_UP, mouseNode, mouseNode, event);
 								
 								// dispatch click
-								dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.CLICK, mouseNode, event);
+								dispatchMouseSignalsInNodeAndItsParents(MouseEvent.CLICK, mouseNode, mouseNode, event);
 							}
 							else
 							{
 								if ( mouseDownInNode )
 								{
-									dispatchMouseEventInNodeAndItsParents(mouseDownInNode, "releaseOutside", null, event);
+									dispatchMouseSignalsInNodeAndItsParents("releaseOutside", mouseNode, mouseDownInNode, event);
 								}
 								
 								// dispatch mouse up
-								dispatchMouseEventInNodeAndItsParents(mouseNode, MouseEvent.MOUSE_UP, mouseNode, event);
+								dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_UP, mouseNode, mouseNode, event);
 							}
 							
 							mouseDownInNode = null;
@@ -307,57 +280,50 @@ package de.nulldesign.nd2dx.display
 				}
 				else if ( event.type == MouseEvent.MOUSE_MOVE && mouseInNode )
 				{
-					dispatchMouseEventInNodeAndItsParents(mouseInNode, MouseEvent.MOUSE_OUT, null, event);
+					dispatchMouseSignalsInNodeAndItsParents(MouseEvent.MOUSE_OUT, mouseInNode, mouseInNode, event);
 					mouseInNode = null;
 				}
 				else if ( event.type == MouseEvent.MOUSE_UP && mouseDownInNode )
 				{
-					dispatchMouseEventInNodeAndItsParents(mouseDownInNode, "releaseOutside", null, event);
+					dispatchMouseSignalsInNodeAndItsParents("releaseOutside", mouseDownInNode, mouseDownInNode, event);
 					mouseDownInNode = null;
 				}
 			}
 		}
 		
-		public function dispatchMouseEventInNodeAndItsParents(node:Node2D, type:String, target:Node2D, event:MouseEvent):void
+		public function dispatchMouseSignalsInNodeAndItsParents(type:String, target:Node2D, currentTarget:Node2D, event:MouseEvent):void
 		{
-			node.onMouseEvent.dispatch(type, target, node, event);
+			mouseSignal.stopPropagation = false;
 			
-			if ( !node.mousePropagate || !node.mousePropagateOnce )
+			mouseSignal.type = type;
+			mouseSignal.target = target;
+			mouseSignal.currentTarget = currentTarget;
+			mouseSignal.event = event;
+			
+			var node:Node2D = currentTarget;
+			
+			while (node)
 			{
-				node.mousePropagateOnce = true;
-				return;
-			}
-			
-			var parent:Node2D = node.parent;
-			
-			while (parent)
-			{
-				parent.onMouseEvent.dispatch(type, target, parent, event);
+				mouseSignal.currentTarget = node;
+				node.dispatchSignal(type, mouseSignal);
 				
-				if ( !parent.mousePropagate || !parent.mousePropagateOnce )
-				{
-					parent.mousePropagateOnce = true;
-					return;
-				}
+				if ( mouseSignal.stopPropagation ) return;
 				
-				parent = parent.parent;
+				node = node.parent;
 			}
 		}
 
-		public function resizeStage(e:Event = null):void {
-			if(!context3D || context3D.driverInfo == "Disposed") {
-				return;
-			}
-
+		public function resizeStage(e:Event = null):void 
+		{			
+			if ( !context3D || context3D.driverInfo == "Disposed" ) return;
+			
 			var rect:Rectangle = bounds ? bounds : new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
-
-			if(!rect.width || !rect.height) {
-				return;
-			}
-
+			
+			if ( !rect.width || !rect.height ) return;
+			
 			stage.stage3Ds[stageID].x = rect.x;
 			stage.stage3Ds[stageID].y = rect.y;
-
+			
 			context3D.configureBackBuffer(rect.width, rect.height, antiAliasing, depthAndStencil);
 			camera.resizeCameraStage(rect.width, rect.height);
 		}
@@ -366,19 +332,17 @@ package de.nulldesign.nd2dx.display
 		{
 			timeSinceStartInSeconds = getTimer() * 0.001;
 			
-			renderSupportManager.initRenderSupports();
-			renderSupportManager.currentRenderSupport = renderSupport;
+			_renderer.elapsed = timeSinceStartInSeconds - lastFramesTime;
 			
-			renderSupport.elapsed = timeSinceStartInSeconds - lastFramesTime;
-			
-			if (scene && context3D && context3D.driverInfo != "Disposed") 
+			if ( _scene && context3D && context3D.driverInfo != "Disposed" ) 
 			{				
-				context3D.clear(scene.br, scene.bg, scene.bb, scene.ba);
+				context3D.clear(_scene.br, _scene.bg, _scene.bb, _scene.ba);
 				
-				if (deviceWasLost) 
+				if ( deviceWasLost )
 				{
-					ShaderCache.handleDeviceLoss();
-					scene.handleDeviceLoss();
+					_renderer.handleDeviceLoss(context3D);
+					resourceManager.handleDeviceLoss();
+					_scene.handleDeviceLoss();
 					
 					Statistics.handleDeviceLoss();
 					
@@ -387,60 +351,39 @@ package de.nulldesign.nd2dx.display
 				
 				Statistics.reset();
 				
-				renderSupport.viewProjectionMatrix = camera.getViewProjectionMatrix();
-				renderSupport.prepare();
+				_renderer.prepare();
 				
-				scene.drawNode(renderSupport);
+				_scene.drawNode(_renderer);
 				
-				//renderSupport.finalize();
-				renderSupportManager.currentRenderSupport.finalize();
+				_renderer.draw();
 				
 				context3D.present();
 			}
 			
 			lastFramesTime = timeSinceStartInSeconds;
 		}
-
-		public function setActiveScene(value:Scene2D):void 
-		{			
-			if (scene) 
-			{
-				scene.setReferences(null, null, null, null);
-			}
-			
-			scene = value;
-			
-			if (scene) 
-			{
-				scene.setReferences(stage, camera, this, scene);
-				scene.step(0);
-			}
-		}
 		
-		public function get activeScene():Scene2D
-		{
-			return scene;
-		}
-
 		public function start():void 
 		{
 			wakeUp();
 		}
-
+		
 		/**
 		 * Pause all movement in your game. The drawing loop will still fire
 		 */
-		public function pause():void {
+		public function pause():void
+		{
 			isPaused = true;
 		}
-
+		
 		/**
 		 * Resume movement in your game.
 		 */
-		public function resume():void {
+		public function resume():void
+		{
 			isPaused = false;
 		}
-
+		
 		/**
 		 * Put everything to sleep, no drawing and step loop will be fired
 		 */
@@ -448,8 +391,8 @@ package de.nulldesign.nd2dx.display
 		{
 			removeEventListener(Event.ENTER_FRAME, mainLoop);
 
-			if(context3D && scene) {
-				context3D.clear(scene.br, scene.bg, scene.bb, scene.ba);
+			if(context3D && _scene) {
+				context3D.clear(_scene.br, _scene.bg, _scene.bb, _scene.ba);
 				context3D.present();
 			}
 		}
@@ -485,10 +428,10 @@ package de.nulldesign.nd2dx.display
 				context3D = null;
 			}
 			
-			if (scene) 
+			if (_scene) 
 			{				
-				scene.dispose();
-				scene = null;
+				_scene.dispose();
+				_scene = null;
 			}
 			
 			camera = null;
@@ -580,6 +523,63 @@ package de.nulldesign.nd2dx.display
 			{
 				stage.removeEventListener(MouseEvent.MOUSE_DOWN, mouseEventHandler);
 			}
+		}
+		
+		public function get scene():Scene2D 
+		{
+			return _scene;
+		}
+		
+		public function set scene(value:Scene2D):void 
+		{
+			if ( _scene == value ) return;
+			
+			if ( _scene ) 
+			{
+				_scene.setReferences(null, null, null, null);
+			}
+			
+			_scene = value;
+			
+			if ( _scene ) 
+			{
+				_scene.setReferences(stage, camera, this, _scene);
+				_scene.scaleX = scene.scaleY = resourceManager.contentScaleFactor;
+				_scene.step(0);
+			}
+		}
+		
+		public function get renderer():RendererBase 
+		{
+			return _renderer;
+		}
+		
+		public function set renderer(value:RendererBase):void 
+		{
+			if ( _renderer == value ) return;
+			
+			if ( _renderer ) _renderer.draw();
+			
+			if ( value )
+			{
+				if ( context3D )
+				{
+					value.init(context3D, camera);
+					value.activate();
+					value.prepare();
+				}
+				
+				if ( _renderer )
+				{
+					value.elapsed = _renderer.elapsed;
+					value.deviceWasLost = _renderer.deviceWasLost;
+					value.scissorRect = _renderer.scissorRect;
+					value.vScissorRects = _renderer.vScissorRects;
+				}
+				
+			}
+			
+			_renderer = value;
 		}
 	}
 }

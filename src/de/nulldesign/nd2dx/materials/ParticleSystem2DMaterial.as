@@ -30,8 +30,7 @@
 
 package de.nulldesign.nd2dx.materials 
 {	
-	import de.nulldesign.nd2dx.materials.shader.ShaderCache;
-	import de.nulldesign.nd2dx.materials.texture.Texture2D;
+	import de.nulldesign.nd2dx.resource.shader.Shader2D;
 	import flash.geom.Matrix3D;
 
 	import flash.display3D.Context3D;
@@ -42,7 +41,7 @@ package de.nulldesign.nd2dx.materials
 
 	public class ParticleSystem2DMaterial extends Texture2DMaterial 
 	{
-		private static const VERTEX_SHADER:String =
+		public static const VERTEX_SHADER:String =
 			"alias va0, position;" +
 			"alias va1, uv;" +
 			
@@ -186,7 +185,7 @@ package de.nulldesign.nd2dx.materials
 			"v0 = temp0;" +
 			"v1 = temp4;";
 
-		private static const FRAGMENT_SHADER:String =
+		public static const FRAGMENT_SHADER:String =
 			"alias v0, texCoord;" +
 			"alias v1, colorMultiplier;" +
 			"temp0 = sample(texCoord, texture0);" +
@@ -200,6 +199,7 @@ package de.nulldesign.nd2dx.materials
 		
 		public function ParticleSystem2DMaterial() 
 		{
+			shader = resourceManager.getResourceById("shader_particlesystem2dmaterial") as Shader2D;
 			programConstants = new Vector.<Number>(20, true);
 		}
 		
@@ -212,7 +212,7 @@ package de.nulldesign.nd2dx.materials
 		override protected function prepareForRender(context:Context3D):void 
 		{
 			if ( invalidateClipSpace || _node.invalidateMatrix ) updateClipSpace();
-			context.setBlendFactors(blendMode.src, blendMode.dst);
+			context.setBlendFactors(blendModeSrc, blendModeDst);
 			updateProgram(context);
 			
 			context.setTextureAt(0, texture.getTexture(context));
@@ -271,14 +271,29 @@ package de.nulldesign.nd2dx.materials
 		
 		override protected function initProgram(context:Context3D):void 
 		{
-			if (!shaderData) 
+			shaderProgram = _shader.getShaderProgram(context, texture, ["BURST", isBurst]);
+			
+			/*if ( !shader || invalidateShader ) 
 			{
-				var defines:Array = ["TextureMaterial",
-					"BURST", isBurst,
-					"USE_UV", useUV];
-					
-				shaderData = ShaderCache.getShader(context, defines, VERTEX_SHADER, FRAGMENT_SHADER, texture);
-			}
+				invalidateShader = false;
+				
+				shader = resourceManager.getResourceById("shader_particlesystem2dmaterial") as Shader2D;
+				program = shader.getProgram(context, texture, ["BURST", isBurst]);
+				
+				//var defines:Array = ["Texture2DMaterial",
+					//"USE_UV", false];
+				
+				//shaderData = ShaderCache.getShader(context, defines, VERTEX_SHADER, FRAGMENT_SHADER, texture);
+			}*/
+			
+			//if (!shaderData) 
+			//{
+				//var defines:Array = ["TextureMaterial",
+					//"BURST", isBurst,
+					//"USE_UV", useUV];
+					//
+				//shaderData = ShaderCache.getShader(context, defines, VERTEX_SHADER, FRAGMENT_SHADER, texture);
+			//}
 		}
 		
 	}

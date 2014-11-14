@@ -1,9 +1,11 @@
 package de.nulldesign.nd2dx.components 
 {
+	import de.nulldesign.nd2dx.components.renderers.TexturedMeshRendererComponent;
 	import de.nulldesign.nd2dx.materials.MaterialBase;
-	import de.nulldesign.nd2dx.materials.texture.AnimatedTexture2D;
-	import de.nulldesign.nd2dx.materials.texture.Texture2D;
+	import de.nulldesign.nd2dx.components.renderers.properties.TextureProperty;
 	import de.nulldesign.nd2dx.materials.Texture2DMaterial;
+	import de.nulldesign.nd2dx.resource.texture.AnimatedTexture2D;
+	import de.nulldesign.nd2dx.resource.texture.Texture2D;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	/**
@@ -12,8 +14,12 @@ package de.nulldesign.nd2dx.components
 	 */
 	public class AnimatedTextureComponent extends ComponentBase
 	{
-		private var _material:Texture2DMaterial;
+		private var texturedMeshRendererComponent:TexturedMeshRendererComponent;
+		private var textureProperty:TextureProperty;
+		
 		private var _animatedTexture2D:AnimatedTexture2D;
+		
+		private var isReadyForRender:Boolean = false;
 		
 		private var _fps:Number = 25;
 		
@@ -34,6 +40,25 @@ package de.nulldesign.nd2dx.components
 			fps = 24;
 		}
 		
+		public function checkIfReadyForRender():void
+		{
+			if ( (!texturedMeshRendererComponent && !textureProperty) || !_animatedTexture2D )
+			{
+				isReadyForRender = false;
+			}
+			else
+			{
+				if ( _animatedTexture2D.numFrames <= 0 )
+				{
+					isReadyForRender = false
+				}
+				else
+				{
+					isReadyForRender = true;
+				}
+			}
+		}
+		
 		public function get fps():Number 
 		{
 			return _fps;
@@ -45,15 +70,29 @@ package de.nulldesign.nd2dx.components
 			elapsedTimeForFrame = 1 / _fps;
 		}
 		
-		public function get material():Texture2DMaterial 
+		public function get source():Object 
 		{
-			return _material;
+			return (texturedMeshRendererComponent ? texturedMeshRendererComponent : textureProperty);
 		}
 		
-		public function set material(value:Texture2DMaterial):void 
+		public function set source(value:Object):void 
 		{
-			_material = value;
-			if ( _material && _animatedTexture2D ) setFrameIndex(0);
+			if ( value == null )
+			{
+				texturedMeshRendererComponent = null;
+				textureProperty = null;
+			}
+			
+			if ( value is TexturedMeshRendererComponent )
+			{
+				texturedMeshRendererComponent = value as TexturedMeshRendererComponent;
+			}
+			else if ( value is TextureProperty )
+			{
+				textureProperty = value as TextureProperty;
+			}
+			
+			checkIfReadyForRender();
 		}
 		
 		public function get animatedTexture2D():AnimatedTexture2D 
@@ -64,35 +103,13 @@ package de.nulldesign.nd2dx.components
 		public function set animatedTexture2D(value:AnimatedTexture2D):void 
 		{
 			_animatedTexture2D = value;
-			if ( _material && _animatedTexture2D ) setFrameIndex(0);
-		}
-		
-		override public function onAddedToNode():void 
-		{
-			checkForMaterialInComponent(node.getComponent(Mesh2DRendererComponent));
-		}
-		
-		override public function onComponentAddedToParentNode(component:ComponentBase):void 
-		{
-			checkForMaterialInComponent(component);
-		}
-		
-		public function checkForMaterialInComponent(component:ComponentBase):void
-		{
-			if ( !component ) return;
-			if ( _material ) return;
-			
-			var meshRendererComponent:Mesh2DRendererComponent = component as Mesh2DRendererComponent;
-			if ( !meshRendererComponent ) return;
-			
-			material = meshRendererComponent.material as Texture2DMaterial;
+			//setFrameIndex(0);
+			checkIfReadyForRender();
 		}
 		
 		override public function step(elapsed:Number):void 
 		{
-			if ( !_material ) return;
-			if ( !_animatedTexture2D ) return;
-			if ( isFinished ) return;
+			if ( !isReadyForRender ) return;
 			
 			elapsedTimeLeft += elapsed;
 			
@@ -118,15 +135,19 @@ package de.nulldesign.nd2dx.components
 			if ( currentFrameIndex == index ) return;
 			frameIndex = currentFrameIndex = index % _animatedTexture2D.numFrames;
 			
+			if ( currentFrameIndex < 0 ) currentFrameIndex = _animatedTexture2D.numFrames + currentFrameIndex;
+			
 			currentTexture = _animatedTexture2D.frames[currentFrameIndex];
 			
-			_material.uvRect = currentTexture.uvRect;
-			_material.frameOffsetX = currentTexture.frameOffsetX;
-			_material.frameOffsetY = currentTexture.frameOffsetY;
-			_material.width = currentTexture.textureWidth;
-			_material.height = currentTexture.textureHeight;
+			if ( texturedMeshRendererComponent )
+			{
+				texturedMeshRendererComponent.texture = currentTexture;
+			}
+			else if ( textureProperty )
+			{
+				textureProperty.texture = currentTexture;
+			}
 			
-			_material.invalidateClipSpace = true;
 		}
 	}
 

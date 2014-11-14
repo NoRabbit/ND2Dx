@@ -30,16 +30,20 @@
 
 package de.nulldesign.nd2dx.display {
 
+	import com.rabbitframework.managers.pool.PoolManager;
+	import com.rabbitframework.utils.IPoolable;
 	import de.nulldesign.nd2dx.components.ComponentBase;
-	import de.nulldesign.nd2dx.components.Mesh2DRendererComponent;
-	import de.nulldesign.nd2dx.geom.Vector2D;
-	import de.nulldesign.nd2dx.support.RenderSupportBase;
-	import de.nulldesign.nd2dx.support.RenderSupportManager;
+	import de.nulldesign.nd2dx.components.renderers.RendererComponentBase;
+	import de.nulldesign.nd2dx.components.ui.UIComponent;
+	import de.nulldesign.nd2dx.signals.SignalDispatcher;
+	import de.nulldesign.nd2dx.renderers.RendererBase;
+	import de.nulldesign.nd2dx.signals.SignalTypes;
+	import de.nulldesign.nd2dx.utils.IIdentifiable;
 	import de.nulldesign.nd2dx.utils.NumberUtil;
+	import de.nulldesign.nd2dx.utils.Vector2D;
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getQualifiedClassName;
 	import flash.utils.getQualifiedSuperclassName;
-	import org.osflash.signals.Signal;
 
 	import flash.display.Stage;
 	import flash.events.Event;
@@ -57,20 +61,48 @@ package de.nulldesign.nd2dx.display {
 	 * <li>draw - Your rendering code goes here</li>
 	 * </ul>
 	 */
-	public class Node2D
+	public class Node2D extends SignalDispatcher implements IPoolable, IIdentifiable
 	{
-		public var renderSupportManager:RenderSupportManager = RenderSupportManager.getInstance();
+		WGM::IS_EDITOR
+		public var callStepInEditor:Boolean = false;
 		
-		public var id:String = "";
+		public var poolManager:PoolManager = PoolManager.getInstance();
+		
+		public var _id:String = "";
+		
+		/* INTERFACE de.nulldesign.nd2dx.utils.IIdentifiable */
+		
+		[WGM (isEditable = false)]
+		public function set id(value:String):void 
+		{
+			_id = value;
+		}
+		
+		public function get id():String 
+		{
+			return _id;
+		}
+		
+		[WGM]
 		public var name:String = "";
+		
+		[WGM]
+		public var customClass:String = "";
+		
+		[WGM (isInspectable = false, isSerializable = true, label="labelSerialTest")]
+		public var serialTest:Vector2D = new Vector2D(5, 4);
+		
+		[WGM (isInspectable = false, isSerializable = true, label="label_yoplaboum")]
+		public var yoplaboum:Node2D;
 		
 		public var localModelMatrix:Matrix3D = new Matrix3D();
 		public var worldModelMatrix:Matrix3D = new Matrix3D();
 		
 		public var matrixUpdated:Boolean = false;
+		public var scissorRectUpdated:Boolean = false;
 		public var invalidateMatrix:Boolean = true;
-		public var invalidateScrollRect:Boolean = true;
-		public var useScrollRect:Boolean = false;
+		public var invalidateScissorRect:Boolean = true;
+		public var useScissorRect:Boolean = false;
 		public var invalidateColors:Boolean = true;
 		
 		public var _numChildren:uint = 0;
@@ -80,20 +112,18 @@ package de.nulldesign.nd2dx.display {
 		public var prev:Node2D = null;
 		public var next:Node2D = null;
 		
-		// custom render support
-		public var customRenderSupport:RenderSupportBase;
-		public var finalizeRenderSupport:Boolean = false;
+		public var worldRelativeZ:Number = 0.0;
 		
 		// components
 		public var numComponents:int = 0;
 		public var componentFirst:ComponentBase = null;
 		public var componentLast:ComponentBase = null;
-		public var hasMesh2DRendererComponent:Boolean = false;
+		public var hasRendererComponent:Boolean = false;
+		
+		public var uiComponent:UIComponent;
 		
 		public var camera:Camera2D;
 		
-		public var mousePropagate:Boolean = true;
-		public var mousePropagateOnce:Boolean = true;
 		protected var _mouseEnabled:Boolean = false;
 		
 		public function get mouseEnabled():Boolean 
@@ -119,9 +149,11 @@ package de.nulldesign.nd2dx.display {
 			_mouseChildren = value;
 		}
 		
+		public var forceBlockMouseChildren:Boolean = false;
+		
 		public var mouseInNode:Boolean = false;
-		private var localMouse:Vector3D;
-		private var localMouseMatrix:Matrix3D = new Matrix3D();
+		protected var localMouse:Vector3D;
+		protected var localMouseMatrix:Matrix3D = new Matrix3D();
 		
 		protected var _stage:Stage;
 		
@@ -139,7 +171,7 @@ package de.nulldesign.nd2dx.display {
 		
 		public var scene:Scene2D;
 		
-		public var _width:Number;
+		public var _width:Number = 0.0;
 		
 		public function get width():Number
 		{
@@ -151,7 +183,7 @@ package de.nulldesign.nd2dx.display {
 			scaleX = value / _width;
 		}
 		
-		public var _height:Number;
+		public var _height:Number = 0.0;
 		
 		public function get height():Number
 		{
@@ -174,11 +206,7 @@ package de.nulldesign.nd2dx.display {
 			if (_visible != value)
 			{
 				_visible = value;
-				
-				if (value)
-				{
-					invalidateMatrix = true;
-				}
+				invalidateMatrix = true;
 			}
 		}
 		
@@ -191,7 +219,15 @@ package de.nulldesign.nd2dx.display {
 			{
 				_alpha = value;
 				invalidateColors = true;
-				visible = (_alpha > 0.0);
+				
+				if ( _alpha <= 0.0 && _visible )
+				{
+					visible = false;
+				}
+				else if ( _alpha > 0.0 && !_visible )
+				{
+					visible = true;
+				}
 			}
 		}
 		
@@ -244,7 +280,7 @@ package de.nulldesign.nd2dx.display {
 		protected var _tint:uint = 0xFFFFFF;
 		
 		public function get tint():uint 
-		{			
+		{
 			return _tint;
 		}
 		
@@ -292,6 +328,22 @@ package de.nulldesign.nd2dx.display {
 		public function get scaleY():Number
 		{
 			return _scaleY;
+		}
+		
+		public var _scaleZ:Number = 1.0;
+		
+		public function set scaleZ(value:Number):void
+		{
+			if (_scaleZ != value)
+			{
+				_scaleZ = value;
+				invalidateMatrix = true;
+			}
+		}
+		
+		public function get scaleZ():Number
+		{
+			return _scaleZ;
 		}
 
 		protected var _x:Number = 0.0;
@@ -342,38 +394,39 @@ package de.nulldesign.nd2dx.display {
 			return _z;
 		}
 		
-		protected var _pivot:Point = new Point(0.0, 0.0);
+		protected var _pivot:Vector3D = new Vector3D(0.0, 0.0, 0.0);
 		
-		public function get pivot():Point
+		public function get pivot():Vector3D
 		{
 			return _pivot;
 		}
 		
-		public function set pivot(value:Point):void
+		public function set pivot(value:Vector3D):void
 		{
-			if (_pivot.x != value.x || _pivot.y != value.y)
+			if (_pivot.x != value.x || _pivot.y != value.y || _pivot.z != value.z)
 			{
 				_pivot.x = value.x;
 				_pivot.y = value.y;
+				_pivot.z = value.z;
 				invalidateMatrix = true;
 			}
 		}
 		
-		public var localScrollRect:Rectangle;
+		public var localScissorRect:Rectangle;
 		
-		public var worldScrollRect:Rectangle;
+		public var worldScissorRect:Rectangle;
 		
-		public function get scrollRect():Rectangle
+		public function get scissorRect():Rectangle
 		{
-			return localScrollRect;
+			return localScissorRect;
 		}
 		
-		public function set scrollRect(value:Rectangle):void
+		public function set scissorRect(value:Rectangle):void
 		{
-			if ( (localScrollRect && value == null) || !localScrollRect || localScrollRect.x != value.x || localScrollRect.y != value.y || localScrollRect.width != value.width || localScrollRect.height != value.height)
+			if ( (localScissorRect && value == null) || !localScissorRect || localScissorRect.x != value.x || localScissorRect.y != value.y || localScissorRect.width != value.width || localScissorRect.height != value.height)
 			{
-				localScrollRect = value;
-				invalidateScrollRect = true;
+				localScissorRect = value;
+				invalidateScissorRect = true;
 			}
 		}
 		
@@ -453,46 +506,11 @@ package de.nulldesign.nd2dx.display {
 			return _mouseY;
 		}
 		
+		public var hitTestMargin:Number = 0.0;
+		
 		public function get numChildren():uint
 		{
 			return _numChildren;
-		}
-		
-		private var _onComponentAdded:Signal;
-		private var _onComponentRemoved:Signal;
-		
-		private var _onMouseEvent:Signal;
-		private var _onAddedToStage:Signal;
-		private var _onRemovedFromStage:Signal;
-		
-		public function get onComponentAdded():Signal 
-		{
-			if ( !_onComponentAdded ) _onComponentAdded = new Signal(ComponentBase);
-			return _onComponentAdded;
-		}
-		
-		public function get onComponentRemoved():Signal 
-		{
-			if ( !_onComponentRemoved ) _onComponentRemoved = new Signal(ComponentBase);
-			return _onComponentRemoved;
-		}
-		
-		public function get onMouseEvent():Signal 
-		{
-			if ( !_onMouseEvent ) _onMouseEvent = new Signal(String, Node2D, Node2D, MouseEvent);
-			return _onMouseEvent;
-		}
-		
-		public function get onAddedToStage():Signal 
-		{
-			if ( !_onAddedToStage ) _onAddedToStage = new Signal(Node2D);
-			return _onAddedToStage;
-		}
-		
-		public function get onRemovedFromStage():Signal 
-		{
-			if ( !_onRemovedFromStage ) _onRemovedFromStage = new Signal(Node2D);
-			return _onRemovedFromStage;
 		}
 		
 		public function Node2D()
@@ -506,15 +524,16 @@ package de.nulldesign.nd2dx.display {
 			
 			if ( _scaleX == 0 ) _scaleX = 0.000000000000001;
 			if ( _scaleY == 0 ) _scaleY = 0.000000000000001;
+			if ( _scaleZ == 0 ) _scaleZ = 0.000000000000001;
 			
 			localModelMatrix.identity();
-			localModelMatrix.appendTranslation(-_pivot.x, -_pivot.y, 0);
-			localModelMatrix.appendScale(_scaleX, _scaleY, 1.0);
+			localModelMatrix.appendTranslation(-_pivot.x, -_pivot.y, -_pivot.z);
+			localModelMatrix.appendScale(_scaleX, _scaleY, _scaleZ);
 			localModelMatrix.appendRotation(_rotationZ, Vector3D.Z_AXIS);
-			//localModelMatrix.appendRotation(_rotationY, Vector3D.Y_AXIS);
-			//localModelMatrix.appendRotation(_rotationX, Vector3D.X_AXIS);
+			localModelMatrix.appendRotation(_rotationY, Vector3D.Y_AXIS);
+			localModelMatrix.appendRotation(_rotationX, Vector3D.X_AXIS);
 			localModelMatrix.appendTranslation(_x, _y, _z);
-			localModelMatrix.appendTranslation(_pivot.x, _pivot.y, 0);
+			localModelMatrix.appendTranslation(_pivot.x, _pivot.y, _pivot.z);
 		}
 		
 		public function updateWorldMatrix():void
@@ -528,51 +547,51 @@ package de.nulldesign.nd2dx.display {
 			}
 		}
 		
-		public function updateScrollRect():void
+		public function updateScissorRect():void
 		{
-			invalidateScrollRect = false;
+			invalidateScissorRect = false;
 			
-			if ( localScrollRect ) 
+			if ( localScissorRect ) 
 			{
-				var pos:Point = localToWorld(new Point(localScrollRect.x, localScrollRect.y));
-				worldScrollRect = localScrollRect.clone();
-				worldScrollRect.x = pos.x;
-				worldScrollRect.y = pos.y;
-				pos.x = localScrollRect.x + localScrollRect.width;
-				pos.y = localScrollRect.y + localScrollRect.height;
-				pos = localToWorld(pos);
-				worldScrollRect.width = pos.x - worldScrollRect.x;
-				worldScrollRect.height = pos.y - worldScrollRect.y;
+				var pos:Point = localToGlobal(new Point(localScissorRect.x, localScissorRect.y));
+				worldScissorRect = localScissorRect.clone();
+				worldScissorRect.x = pos.x;
+				worldScissorRect.y = pos.y;
+				pos.x = localScissorRect.x + localScissorRect.width;
+				pos.y = localScissorRect.y + localScissorRect.height;
+				pos = localToGlobal(pos);
+				worldScissorRect.width = pos.x - worldScissorRect.x;
+				worldScissorRect.height = pos.y - worldScissorRect.y;
 				
-				if ( parent && parent.useScrollRect )
+				if ( parent && parent.useScissorRect )
 				{
-					worldScrollRect = worldScrollRect.intersection(parent.worldScrollRect);
+					worldScissorRect = worldScissorRect.intersection(parent.worldScissorRect);
 				}
 				
-				useScrollRect = true;
+				useScissorRect = true;
 				
 				var w:Number = world.bounds ? world.bounds.width : stage.stageWidth;
 				var h:Number = world.bounds ? world.bounds.height : stage.stageHeight;
 				
-				if ( worldScrollRect.width < 1 || worldScrollRect.height < 1 || worldScrollRect.x + worldScrollRect.width < 1 || worldScrollRect.x >= w || worldScrollRect.y + worldScrollRect.height < 1 || worldScrollRect.y >= h )
+				if ( worldScissorRect.width < 1 || worldScissorRect.height < 1 || worldScissorRect.x + worldScissorRect.width < 1 || worldScissorRect.x >= w || worldScissorRect.y + worldScissorRect.height < 1 || worldScissorRect.y >= h )
 				{
-					//useScrollRect = false;
-					worldScrollRect.x = 0;
-					worldScrollRect.y = 0;
-					worldScrollRect.width = 1;
-					worldScrollRect.height = 1;
+					//useScissorRect = false;
+					worldScissorRect.x = 0;
+					worldScissorRect.y = 0;
+					worldScissorRect.width = 1;
+					worldScissorRect.height = 1;
 				}
 			}
-			else if ( parent && parent.useScrollRect )
+			else if ( parent && parent.useScissorRect )
 			{
-				worldScrollRect = parent.worldScrollRect.clone();
-				useScrollRect = true;
+				worldScissorRect = parent.worldScissorRect.clone();
+				useScissorRect = true;
 			}
 			else
 			{
-				useScrollRect = false;
-				localScrollRect = null;
-				worldScrollRect = null;
+				useScissorRect = false;
+				localScissorRect = null;
+				worldScissorRect = null;
 			}
 		}
 		
@@ -580,7 +599,7 @@ package de.nulldesign.nd2dx.display {
 		{
 			var result:Node2D = null;
 			
-			if (event)
+			if ( event && _visible )
 			{
 				// if we have children, check first if we hit one of them
 				if ( _mouseChildren && _numChildren > 0 )
@@ -618,14 +637,17 @@ package de.nulldesign.nd2dx.display {
 			updateLocalMatrix();
 			updateWorldMatrix();
 			
-			// transform mousepos to local coordinate system
 			localMouseMatrix.identity();
 			localMouseMatrix.append(worldModelMatrix);
 			localMouseMatrix.append(cameraViewProjectionMatrix);
 			localMouseMatrix.invert();
-			
+
 			localMouse = localMouseMatrix.transformVector(mousePosition);
-			
+			localMouse.w = 1.0 / localMouse.w;
+			localMouse.x /= localMouse.w;
+			localMouse.y /= localMouse.w;
+			localMouse.z /= localMouse.w;
+
 			_mouseX = localMouse.x;
 			_mouseY = localMouse.y;
 		}
@@ -636,19 +658,29 @@ package de.nulldesign.nd2dx.display {
 		 */
 		public function hitTest():Boolean
 		{
-			// even faster isNaN()	http://jacksondunstan.com/articles/983
-			if (_width != _width || _height != _height)
+			if ( uiComponent )
 			{
-				return false;
+				return _mouseX >= 0.0 - hitTestMargin
+				&& _mouseX <= uiComponent.uiWidth + hitTestMargin
+				&& _mouseY >= 0.0 - hitTestMargin
+				&& _mouseY <= uiComponent.uiHeight + hitTestMargin;
 			}
-			
-			var halfWidth:Number = _width >> 1;
-			var halfHeight:Number = _height >> 1;
-			
-			return _mouseX >= -halfWidth
-				&& _mouseX <= halfWidth
-				&& _mouseY >= -halfHeight
-				&& _mouseY <= halfHeight;
+			else
+			{
+				// even faster isNaN()	http://jacksondunstan.com/articles/983
+				if (_width != _width || _height != _height)
+				{
+					return false;
+				}
+				
+				var halfWidth:Number = _width >> 1;
+				var halfHeight:Number = _height >> 1;
+				
+				return _mouseX >= -halfWidth - hitTestMargin
+					&& _mouseX <= halfWidth + hitTestMargin
+					&& _mouseY >= -halfHeight - hitTestMargin
+					&& _mouseY <= halfHeight + hitTestMargin;
+			}
 		}
 		
 		internal function setReferences(stage:Stage, camera:Camera2D, world:World2D, scene:Scene2D):void
@@ -680,12 +712,12 @@ package de.nulldesign.nd2dx.display {
 				if (stage)
 				{
 					_stage = stage;
-					onAddedToStage.dispatch(this);
+					getSignal(Event.ADDED_TO_STAGE).dispatch();
 				}
 				else
 				{
-					onRemovedFromStage.dispatch(this);
 					_stage = stage;
+					getSignal(Event.REMOVED_FROM_STAGE).dispatch();
 				}
 			}
 			
@@ -705,17 +737,32 @@ package de.nulldesign.nd2dx.display {
 			}
 		}
 		
-		public function drawNode(renderSupport:RenderSupportBase):void 
+		public function drawNode(renderer:RendererBase):void 
 		{
-			//renderSupport = renderSupportManager.currentRenderSupport;
-			
 			// step components first
 			for (var component:ComponentBase = componentFirst; component; component = component.next)
 			{
-				if( component.isActive ) component.step(renderSupport.elapsed);
+				// don't step in wgm editor unless it is asked to
+				WGM::IS_EDITOR
+				{
+					if( component._isActive && component.callStepInEditor ) component.step(renderer.elapsed);
+				}
+				WGM::IS_RELEASE
+				{
+					if( component._isActive ) component.step(renderer.elapsed);
+				}
+				
 			}
 			
-			step(renderSupport.elapsed);
+			// don't step in wgm editor unless it is asked to
+			WGM::IS_EDITOR
+			{
+				if( callStepInEditor ) step(renderer.elapsed);
+			}
+			WGM::IS_RELEASE
+			{
+				step(renderer.elapsed);
+			}
 			
 			if ( invalidateColors || (parent && parent.invalidateColors) )
 			{
@@ -739,50 +786,47 @@ package de.nulldesign.nd2dx.display {
 			// perform matrix calculations and draw only if visible
 			if ( _visible )
 			{
-				if ( customRenderSupport && customRenderSupport != renderSupport )
+				// update matrices only if needed
+				if ( _numChildren || localScissorRect )
 				{
-					// change current render support (this is needed so we can call the final "finalize" function in World2D)
-					renderSupport = renderSupportManager.setCurrentRenderSupport(renderSupport, customRenderSupport);
-					finalizeRenderSupport = true;
-				}
-				
-				// check first if we have a component that will draw anything
-				if ( !hasMesh2DRendererComponent )
-				{
-					// no, so update matrix if needed
 					checkAndUpdateMatrixIfNeeded();
-					
-					if ( localScrollRect ) renderSupport.setScrollRect(this);
-				}
-				else
-				{
-					// render support is in charge of updating matrix if needed
-					draw(renderSupport);
 				}
 				
+				// set scissor rect if needed
+				if ( localScissorRect ) renderer.setScissorRect(this);
+				
+				// draw node if we have one or more renderer components
+				if ( hasRendererComponent ) draw(renderer);
+				
+				// draw children
 				for (var child:Node2D = childFirst; child; child = child.next)
 				{
-					child.drawNode(renderSupport);
+					child.drawNode(renderer);
 				}
 				
-				if ( finalizeRenderSupport )
+				// release scissor rect
+				if ( localScissorRect ) renderer.releaseScissorRect(this);
+				
+				if ( matrixUpdated )
 				{
-					finalizeRenderSupport = false;
-					renderSupport.finalize();
+					matrixUpdated = false;
+					invalidateMatrix = false;
+					
 				}
 				
-				renderSupport.endDrawNode(this);
+				if ( scissorRectUpdated )
+				{
+					scissorRectUpdated = false;
+					invalidateScissorRect = false;
+				}
 				
-				invalidateMatrix = false;
-				invalidateScrollRect = false;
 				invalidateColors = false;
-				matrixUpdated = false;
 			}
 		}
 		
 		public function checkAndUpdateMatrixIfNeeded():void
 		{
-			if ( invalidateMatrix || (parent && parent.invalidateMatrix) )
+			if ( !matrixUpdated && (invalidateMatrix || (parent && parent.invalidateMatrix)) )
 			{
 				if (invalidateMatrix)
 				{
@@ -791,19 +835,19 @@ package de.nulldesign.nd2dx.display {
 				
 				updateWorldMatrix();
 				
-				updateScrollRect();
+				updateScissorRect();
 				
 				// set this to true so children can update their values as well
 				invalidateMatrix = true;
-				invalidateScrollRect = true;
+				invalidateScissorRect = true;
 				
 				// so we don't update matrix more than needed
 				matrixUpdated = true;
 			}
-			else if ( invalidateScrollRect || (parent && parent.invalidateScrollRect) )
+			else if ( !scissorRectUpdated && (invalidateScissorRect || (parent && parent.invalidateScissorRect)) )
 			{
-				updateScrollRect();
-				invalidateScrollRect = true;
+				updateScissorRect();
+				invalidateScissorRect = true;
 			}
 		}
 		
@@ -812,37 +856,13 @@ package de.nulldesign.nd2dx.display {
 			// override in extended classes
 		}
 		
-		public function draw(renderSupport:RenderSupportBase):void 
+		public function draw(renderer:RendererBase):void 
 		{
 			// draw components
 			for (var component:ComponentBase = componentFirst; component; component = component.next)
 			{
-				if( component.isActive ) component.draw(renderSupport);
+				if( component._isActive ) component.draw(renderer);
 			}
-		}
-		
-		protected function unlinkChild(child:Node2D):void
-		{
-			if (child.prev)
-			{
-				child.prev.next = child.next;
-			}
-			else
-			{
-				childFirst = child.next;
-			}
-			
-			if (child.next)
-			{
-				child.next.prev = child.prev;
-			}
-			else
-			{
-				childLast = child.prev;
-			}
-			
-			child.prev = null;
-			child.next = null;
 		}
 		
 		public function addChild(child:Node2D):Node2D
@@ -871,6 +891,56 @@ package de.nulldesign.nd2dx.display {
 			
 			return child;
 		}
+		
+		protected function unlinkChild(child:Node2D):void
+		{
+			if (child.prev)
+			{
+				child.prev.next = child.next;
+			}
+			else
+			{
+				childFirst = child.next;
+			}
+			
+			if (child.next)
+			{
+				child.next.prev = child.prev;
+			}
+			else
+			{
+				childLast = child.prev;
+			}
+			
+			child.prev = null;
+			child.next = null;
+		}
+		
+		/*public function addChildAt(child:Node2D, index:int):Node2D
+		{
+			if ( child.parent && child.parent != this )
+			{
+				child.parent.removeChild(child);
+				child.parent = this;
+				child.setReferences(_stage, camera, world, scene);
+			}
+			
+			if (childLast)
+			{
+				child.prev = childLast;
+				childLast.next = child;
+				childLast = child;
+			}
+			else
+			{
+				childFirst = child;
+				childLast = child;
+			}
+			
+			_numChildren++;
+			
+			return child;
+		}*/
 
 		public function removeChild(child:Node2D):void
 		{
@@ -888,25 +958,49 @@ package de.nulldesign.nd2dx.display {
 			_numChildren--;
 		}
 		
+		public function removeChildAt(index:int):void
+		{
+			var currentIndex:int = 0;
+			var child:Node2D;
+			
+			for (child = childFirst; child; child = child.next)
+			{
+				if ( index == currentIndex ) break;
+				currentIndex++;
+			}
+			
+			if ( child ) removeChild(child);
+		}
+		
 		/**
 		 * Insert or move child1 before child2
 		 * @return
 		 */
 		public function insertChildBefore(child1:Node2D, child2:Node2D):void
 		{
-			if (child2.parent != this)
-			{
-				return;
-			}
+			if ( child2.parent != this ) return;
 			
-			if (child1.parent && child1.parent != this)
+			if ( child1.parent && child1.parent != this )
 			{
 				child1.parent.removeChild(child1);
+				
+				unlinkChild(child1);
+				
+				child1.parent = this;
+				child1.setReferences(_stage, camera, world, scene);
+			}
+			else if ( !child1.parent )
+			{
+				addChild(child1);
+				
+				unlinkChild(child1);
+			}
+			else
+			{
+				unlinkChild(child1);
 			}
 			
-			unlinkChild(child1);
-			
-			if (child2.prev)
+			if ( child2.prev )
 			{
 				child2.prev.next = child1;
 			}
@@ -924,7 +1018,7 @@ package de.nulldesign.nd2dx.display {
 		 * Insert or move child1 after child2
 		 * @return
 		 */
-		public function insertChildAfter(child1:Node2D, child2:Node2D):void
+		/*public function insertChildAfter(child1:Node2D, child2:Node2D):void
 		{
 			if (child2.parent != this)
 			{
@@ -950,9 +1044,9 @@ package de.nulldesign.nd2dx.display {
 			child1.prev = child2;
 			child1.next = child2.next;
 			child2.next = child1;
-		}
+		}*/
 		
-		public function setChildIndex(node:Node2D, index:int):int
+		/*public function setChildIndex(node:Node2D, index:int):int
 		{
 			if ( index >= _numChildren )
 			{
@@ -976,7 +1070,7 @@ package de.nulldesign.nd2dx.display {
 			}
 			
 			return -1;
-		}
+		}*/
 		
 		public function getChildIndex(node:Node2D):int
 		{
@@ -996,8 +1090,8 @@ package de.nulldesign.nd2dx.display {
 			
 			return -1;
 		}
-
-		public function swapChildren(child1:Node2D, child2:Node2D):void
+		
+		/*public function swapChildren(child1:Node2D, child2:Node2D):void
 		{
 			if (child1.parent != this || child2.parent != this)
 			{
@@ -1049,7 +1143,7 @@ package de.nulldesign.nd2dx.display {
 			swap = child1.next;
 			child1.next = child2.next;
 			child2.next = swap;
-		}
+		}*/
 		
 		public function removeAllChildren():void
 		{
@@ -1075,12 +1169,12 @@ package de.nulldesign.nd2dx.display {
 		// COMPONENTS
 		public function addComponent(component:ComponentBase):ComponentBase 
 		{
-			if (component.node) 
+			if ( component.node ) 
 			{
 				component.node.removeComponent(component);
 			}
 			
-			if (componentLast) 
+			if ( componentLast ) 
 			{
 				component.prev = componentLast;
 				componentLast.next = component;
@@ -1094,15 +1188,17 @@ package de.nulldesign.nd2dx.display {
 			
 			numComponents++;
 			
-			if ( component is Mesh2DRendererComponent ) hasMesh2DRendererComponent = true;
+			if ( component is RendererComponentBase ) hasRendererComponent = true;
+			
+			if ( component is UIComponent ) uiComponent = component as UIComponent;
 			
 			component.setReferences(stage, camera, world, scene, this);
 			component.onAddedToNode();
 			
-			onComponentAdded.dispatch(component);
+			getSignal(SignalTypes.OnComponentAddedToNode).dispatchData(component);
 			
-			onComponentAdded.add(component.onComponentAddedToParentNode);
-			onComponentRemoved.add(component.onComponentRemovedFromParentNode);
+			addSignalListener(SignalTypes.OnComponentAddedToNode, component.onComponentAddedToNode);
+			addSignalListener(SignalTypes.OnComponentRemovedFromNode, component.onComponentRemovedFromNode);
 			
 			return component;
 		}
@@ -1118,24 +1214,30 @@ package de.nulldesign.nd2dx.display {
 			
 			numComponents--;
 			
+			hasRendererComponent = false;
+			
 			// go through all remaining component and check if one of them is a mesh2drenderercomponent
 			for (var componentInList:ComponentBase = componentFirst; componentInList; componentInList = componentInList.next)
 			{
-				if ( componentInList is Mesh2DRendererComponent )
+				if ( componentInList is RendererComponentBase )
 				{
-					hasMesh2DRendererComponent = true;
+					hasRendererComponent = true;
 					break;
 				}
 			}
 			
+			if ( component == uiComponent ) uiComponent = null;
+			
 			component.setReferences(null, null, null, null, null);
 			
-			onComponentAdded.remove(component.onComponentAddedToParentNode);
-			onComponentRemoved.remove(component.onComponentRemovedFromParentNode);
+			
+			
+			removeSignalListener(SignalTypes.OnComponentAddedToNode, component.onComponentAddedToNode);
+			removeSignalListener(SignalTypes.OnComponentRemovedFromNode, component.onComponentRemovedFromNode);
 			
 			component.onRemovedFromNode();
 			
-			onComponentRemoved.dispatch(component);
+			getSignal(SignalTypes.OnComponentRemovedFromNode).dispatchData(component);
 		}
 		
 		protected function unlinkComponent(component:ComponentBase):void 
@@ -1162,7 +1264,7 @@ package de.nulldesign.nd2dx.display {
 			component.next = null;
 		}
 		
-		public function getComponent(componentClass:Class):*
+		public function getComponentByClass(componentClass:Class):*
 		{
 			for (var component:ComponentBase = componentFirst; component; component = component.next)
 			{
@@ -1180,9 +1282,11 @@ package de.nulldesign.nd2dx.display {
 		 */
 		public function localToGlobal(p:Point):Point
 		{
+			//checkAndUpdateMatrixIfNeeded();
+			
 			var clipSpaceMat:Matrix3D = new Matrix3D();
 			clipSpaceMat.append(worldModelMatrix);
-			clipSpaceMat.append(camera.getViewProjectionMatrix());
+			clipSpaceMat.append(camera.getViewProjectionMatrix(true));
 			
 			var v:Vector3D = clipSpaceMat.transformVector(new Vector3D(p.x, p.y, 0.0));
 			
@@ -1196,9 +1300,11 @@ package de.nulldesign.nd2dx.display {
 		 */
 		public function globalToLocal(p:Point):Point
 		{
+			//checkAndUpdateMatrixIfNeeded();
+			
 			var clipSpaceMat:Matrix3D = new Matrix3D();
 			clipSpaceMat.append(worldModelMatrix);
-			clipSpaceMat.append(camera.getViewProjectionMatrix());
+			clipSpaceMat.append(camera.getViewProjectionMatrix(true));
 			clipSpaceMat.invert();
 			
 			var from:Vector3D = new Vector3D(p.x / camera.sceneWidth * 2.0 - 1.0,
@@ -1209,7 +1315,7 @@ package de.nulldesign.nd2dx.display {
 			v.w = 1.0 / v.w;
 			v.x /= v.w;
 			v.y /= v.w;
-			//v.z /= v.w;
+			v.z /= v.w;
 			
 			return new Point(v.x, v.y);
 		}
@@ -1221,6 +1327,9 @@ package de.nulldesign.nd2dx.display {
 		 */
 		public function localToWorld(p:Point):Point
 		{
+			//updateLocalMatrix();
+			//updateWorldMatrix();
+			
 			var clipSpaceMat:Matrix3D = new Matrix3D();
 			clipSpaceMat.append(worldModelMatrix);
 			
@@ -1244,87 +1353,7 @@ package de.nulldesign.nd2dx.display {
 			}
 		}
 		
-		public function dispose():void
-		{
-			// components first
-			for (var component:ComponentBase = componentFirst; component; component = component.next)
-			{
-				component.dispose();
-			}
-			
-			// then children
-			while (childLast)
-			{
-				childLast.dispose();
-			}
-			
-			if (parent)
-			{
-				parent.removeChild(this);
-			}
-			
-			_pivot = null;
-			localScrollRect = null;
-			worldScrollRect = null;
-			localModelMatrix = null;
-			worldModelMatrix = null;
-			localMouseMatrix = null;
-			
-			if ( _onMouseEvent ) _onMouseEvent.removeAll();
-			if ( _onAddedToStage ) _onAddedToStage.removeAll();
-			if ( _onComponentAdded ) _onComponentAdded.removeAll();
-			if ( _onComponentRemoved ) _onComponentRemoved.removeAll();
-			if ( _onRemovedFromStage ) _onRemovedFromStage.removeAll();
-			
-			_onMouseEvent = null;
-			_onAddedToStage = null;
-			_onComponentAdded = null;
-			_onComponentRemoved = null;
-			_onRemovedFromStage = null;
-		}
 		
-		public function releaseForPooling(disposeComponents:Boolean = true, disposeChildren:Boolean = true):void
-		{
-			if (disposeComponents)
-			{
-				while (componentLast)
-				{
-					componentLast.dispose();
-				}
-			}
-			
-			if ( disposeChildren )
-			{
-				while (childLast)
-				{
-					childLast.dispose();
-				}
-			}
-			
-			if (parent)
-			{
-				parent.removeChild(this);
-			}
-			
-			alpha = 1.0;
-			_x = _y = _rotationZ = 0.0;
-			_scaleX = _scaleY = 1.0;
-			tint = 0xFFFFFF;
-			invalidateColors = true;
-			invalidateMatrix = true;
-			
-			if ( _onMouseEvent ) _onMouseEvent.removeAll();
-			if ( _onAddedToStage ) _onAddedToStage.removeAll();
-			if ( _onComponentAdded ) _onComponentAdded.removeAll();
-			if ( _onComponentRemoved ) _onComponentRemoved.removeAll();
-			if ( _onRemovedFromStage ) _onRemovedFromStage.removeAll();
-			
-			_onMouseEvent = null;
-			_onAddedToStage = null;
-			_onComponentAdded = null;
-			_onComponentRemoved = null;
-			_onRemovedFromStage = null;
-		}
 		
 		public function getBounds(targetSpace:Node2D = null, checkChildren:Boolean = true, identityMatrices:Boolean = false):Rectangle
 		{
@@ -1407,6 +1436,76 @@ package de.nulldesign.nd2dx.display {
 			}
 			
 			return new Rectangle(minP.x, minP.y, maxP.x - minP.x, maxP.y - minP.y);
+		}
+		
+		/* INTERFACE com.rabbitframework.utils.IPoolable */
+		
+		public function initFromPool():void 
+		{
+			
+		}
+		
+		public function disposeForPool():void 
+		{
+			var currentComponent:ComponentBase
+			
+			while (componentLast)
+			{
+				currentComponent = componentLast;
+				removeComponent(currentComponent);
+				poolManager.releaseObject(currentComponent);
+			}
+			
+			var currentChild:Node2D
+			
+			while (childLast)
+			{
+				currentChild = childLast;
+				removeChild(currentChild);
+				poolManager.releaseObject(currentChild);
+			}
+			
+			alpha = 1.0;
+			_x = _y = _rotationZ = 0.0;
+			_scaleX = _scaleY = 1.0;
+			tint = 0xFFFFFF;
+			invalidateColors = true;
+			invalidateMatrix = true;
+			
+			parent = null;
+			
+			removeAllSignalListeners();
+		}
+		
+		public function dispose():void 
+		{
+			var currentComponent:ComponentBase
+			
+			while (componentLast)
+			{
+				currentComponent = componentLast;
+				removeComponent(currentComponent);
+				currentComponent.dispose();
+			}
+			
+			var currentChild:Node2D
+			
+			while (childLast)
+			{
+				currentChild = childLast;
+				removeChild(currentChild);
+				currentChild.dispose();
+			}
+			
+			parent = null;
+			_pivot = null;
+			localScissorRect = null;
+			worldScissorRect = null;
+			localModelMatrix = null;
+			worldModelMatrix = null;
+			localMouseMatrix = null;
+			
+			removeAllSignalListeners();
 		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿package com.rabbitframework.utils 
 {
+	import flash.utils.ByteArray;
 	
 	/**
 	 * ...
@@ -125,7 +126,7 @@
 			
 			var fileName:String = path.substring(sIndex + 1);
 			
-			trace(fSlash, bSlash, sIndex, fileName);
+			//trace(fSlash, bSlash, sIndex, fileName);
 			
 			if ( !keepExtension )
 			{
@@ -222,6 +223,15 @@
 			}
 			
 			return "";
+		}
+		
+		// from http://jacksondunstan.com/articles/2551
+		public static function cleanMasterString(s:String):String
+		{
+			var bytes:ByteArray = new ByteArray();
+			bytes.writeUTFBytes(s);
+			bytes.position = 0;
+			return bytes.readUTFBytes(bytes.length);
 		}
 	}
 	

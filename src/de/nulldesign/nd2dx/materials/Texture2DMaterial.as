@@ -30,8 +30,8 @@
 
 package de.nulldesign.nd2dx.materials 
 {	
-	import de.nulldesign.nd2dx.materials.shader.ShaderCache;
-	import de.nulldesign.nd2dx.materials.texture.Texture2D;
+	import de.nulldesign.nd2dx.resource.shader.Shader2D;
+	import de.nulldesign.nd2dx.resource.texture.Texture2D;
 	import flash.geom.Matrix3D;
 
 	import flash.display3D.Context3D;
@@ -42,7 +42,7 @@ package de.nulldesign.nd2dx.materials
 
 	public class Texture2DMaterial extends MaterialBase 
 	{
-		private static const VERTEX_SHADER:String =
+		public static const VERTEX_SHADER:String =
 			"alias va0, position;" +
 			"alias va1.xy, uv;" +
 			"alias vc0, viewProjection;" +
@@ -68,7 +68,7 @@ package de.nulldesign.nd2dx.materials
 			"v1 = uvSheet;" +
 			"v2 = temp1;";
 			
-		private static const FRAGMENT_SHADER:String =
+		public static const FRAGMENT_SHADER:String =
 			"alias v0, texCoord;" +
 			"alias v1, uvSheet;" +
 			"alias v2, color;" +
@@ -76,7 +76,7 @@ package de.nulldesign.nd2dx.materials
 			"temp1 *= color;" +
 			"output = temp1;";
 			
-		public var texture:Texture2D;
+		public var _texture:Texture2D;
 		
 		public var uvRect:Rectangle;
 		
@@ -88,39 +88,11 @@ package de.nulldesign.nd2dx.materials
 		public var frameOffsetX:Number = 0.0;
 		public var frameOffsetY:Number = 0.0;
 		
-		private var _useUV:Boolean = false;
-		
 		protected var programConstants:Vector.<Number> = new Vector.<Number>(12, true);
 		
 		public function Texture2DMaterial() 
 		{
-			
-		}
-		
-		public function setTexture(value:Texture2D):void
-		{
-			if ( texture == value ) return;
-			
-			texture = value;
-			
-			if ( texture )
-			{
-				uvRect = texture.uvRect;
-				width = texture.bitmapWidth;
-				height = texture.bitmapHeight;
-				frameOffsetX = texture.frameOffsetX;
-				frameOffsetY = texture.frameOffsetY;
-			}
-			else
-			{
-				uvRect = null;
-				width = 0;
-				height = 0;
-				frameOffsetX = 0.0;
-				frameOffsetY = 0.0;
-			}
-			
-			invalidateClipSpace = true;
+			shader = resourceManager.getResourceById("shader_texture2dmaterial") as Shader2D;
 		}
 		
 		override public function updateClipSpace():void 
@@ -128,7 +100,6 @@ package de.nulldesign.nd2dx.materials
 			clipSpaceMatrix.identity();
 			clipSpaceMatrix.appendScale(_width, _height, 1.0);
 			clipSpaceMatrix.appendTranslation(frameOffsetX, frameOffsetY, 0.0);
-			//trace(frameOffsetX, frameOffsetY);
 			clipSpaceMatrix.append(_node.worldModelMatrix);
 			invalidateClipSpace = false;
 		}
@@ -137,13 +108,14 @@ package de.nulldesign.nd2dx.materials
 		{
 			super.prepareForRender(context);
 			
-			context.setTextureAt(0, texture.getTexture(context));
+			context.setTextureAt(0, _texture.getTexture(context));
+			
 			context.setVertexBufferAt(0, mesh.vertexBuffer, 0, Context3DVertexBufferFormat.FLOAT_2); // vertex
 			context.setVertexBufferAt(1, mesh.vertexBuffer, 2, Context3DVertexBufferFormat.FLOAT_2); // uv
 			
-			if (node.useScrollRect) 
+			if (node.useScissorRect) 
 			{
-				context.setScissorRectangle(node.worldScrollRect);
+				context.setScissorRectangle(node.worldScissorRect);
 			}
 			
 			context.setProgramConstantsFromMatrix(Context3DProgramType.VERTEX, 0, viewProjectionMatrix, true);
@@ -177,15 +149,7 @@ package de.nulldesign.nd2dx.materials
 		
 		override protected function initProgram(context:Context3D):void 
 		{
-			if (!shaderData || invalidateProgram) 
-			{
-				invalidateProgram = false;
-				
-				var defines:Array = ["Texture2DMaterial",
-					"USE_UV", useUV];
-				
-				shaderData = ShaderCache.getShader(context, defines, VERTEX_SHADER, FRAGMENT_SHADER, texture);
-			}
+			shaderProgram = _shader.getShaderProgram(context, texture);
 		}
 		
 		override public function dispose():void 
@@ -194,18 +158,128 @@ package de.nulldesign.nd2dx.materials
 			uvRect = null;
 			texture = null;
 			programConstants = null;
+			shader = null;
+			shaderProgram = null;
 		}
 		
-		public function get useUV():Boolean 
+		public function get texture():Texture2D 
 		{
-			return _useUV;
+			return _texture;
 		}
 		
-		public function set useUV(value:Boolean):void 
+		public function set texture(value:Texture2D):void 
 		{
-			if ( _useUV == value ) return;
-			_useUV = value;
-			invalidateProgram = true;
+			//trace(this, "set texture", value, _texture);
+			
+			if ( _texture == value ) return;
+			
+			var previousMainParentTexture:Texture2D;
+			
+			if ( _texture )
+			{
+				previousMainParentTexture = _texture.mainParent;
+				
+				if ( !value )
+				{
+					_texture.onLocallyAllocated.remove(updateTextureData);
+					_texture.onLocallyDeallocated.remove(updateTextureData);
+					_texture.onRemotelyAllocated.remove(updateTextureData);
+					_texture.onRemotelyDeallocated.remove(updateTextureData);
+				}
+				
+			}
+			
+			_texture = value;
+			
+			if ( _texture )
+			{
+				if ( _texture.mainParent != previousMainParentTexture )
+				{
+					_texture.onLocallyAllocated.add(updateTextureData);
+					_texture.onLocallyDeallocated.add(updateTextureData);
+					_texture.onRemotelyAllocated.add(updateTextureData);
+					_texture.onRemotelyDeallocated.add(updateTextureData);
+				}
+				
+				if ( _texture.isLocallyAllocated || _texture.isRemotellyAllocated )
+				{
+					updateTextureData();
+				}
+				else
+				{
+					checkIfReadyForRender();
+				}
+			}
+			else
+			{
+				checkIfReadyForRender();
+			}
+			
+		}
+		
+		public function updateTextureData():void
+		{
+			if ( _texture )
+			{
+				uvRect = _texture.uvRect;
+				
+				//if ( _texture.originalFrameRect )
+				//{
+					//width = _texture.originalFrameRect.width;
+					//height = _texture.originalFrameRect.height;
+				//}
+				
+				width = _texture.bitmapWidth;
+				height = _texture.bitmapHeight;
+				
+				frameOffsetX = _texture.frameOffsetX;
+				frameOffsetY = _texture.frameOffsetY;
+			}
+			else
+			{
+				uvRect = null;
+				width = 0;
+				height = 0;
+				frameOffsetX = 0.0;
+				frameOffsetY = 0.0;
+			}
+			
+			//trace("updateTextureData");
+			//trace(uvRect);
+			//trace(width);
+			//trace(height);
+			//trace(frameOffsetX);
+			//trace(frameOffsetY);
+			
+			// we maybe need another version of the shader program for that texture
+			shaderProgram = null;
+			
+			invalidateClipSpace = true;
+			
+			checkIfReadyForRender();
+		}
+		
+		override public function checkIfReadyForRender():void 
+		{
+			isReadyForRender = true;
+			
+			if ( !_shader )
+			{
+				isReadyForRender = false;
+				return;
+			}
+			
+			if ( !_texture )
+			{
+				isReadyForRender = false;
+				return;
+			}
+			
+			if ( !_texture.isLocallyAllocated && !_texture.isRemotellyAllocated )
+			{
+				isReadyForRender = false;
+				return;
+			}
 		}
 		
 	}

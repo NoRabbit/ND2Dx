@@ -1,17 +1,25 @@
 package de.nulldesign.nd2dx.components 
 {
+	import com.rabbitframework.utils.IPoolable;
 	import de.nulldesign.nd2dx.display.Camera2D;
 	import de.nulldesign.nd2dx.display.Node2D;
 	import de.nulldesign.nd2dx.display.Scene2D;
 	import de.nulldesign.nd2dx.display.World2D;
-	import de.nulldesign.nd2dx.support.RenderSupportBase;
+	import de.nulldesign.nd2dx.renderers.RendererBase;
+	import de.nulldesign.nd2dx.signals.SignalDispatcher;
+	import de.nulldesign.nd2dx.utils.IIdentifiable;
 	import flash.display.Stage;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
-	public class ComponentBase 
+	public class ComponentBase extends SignalDispatcher implements IPoolable, IIdentifiable
 	{
+		WGM::IS_EDITOR
+		public var callStepInEditor:Boolean = false;
+		
+		public var _id:String = "";
+		
 		public var stage:Stage = null;
 		public var camera:Camera2D = null;
 		public var world:World2D = null;
@@ -21,7 +29,7 @@ package de.nulldesign.nd2dx.components
 		public var prev:ComponentBase = null;
 		public var next:ComponentBase = null;
 		
-		public var isActive:Boolean = true;
+		public var _isActive:Boolean = true;
 		
 		public function ComponentBase() 
 		{
@@ -48,7 +56,6 @@ package de.nulldesign.nd2dx.components
 					onNodeRemovedFromStage();
 				}
 			}
-			
 		}
 		
 		public function onNodeAddedToStage():void
@@ -63,22 +70,32 @@ package de.nulldesign.nd2dx.components
 		
 		public function onAddedToNode():void
 		{
-			// called when this component has successfully been added to its node2d parent
+			// called when this component has successfully been added to its node2d
 		}
 		
 		public function onRemovedFromNode():void
 		{
-			// called when this component has successfully been removed from its node2d parent
+			// called when this component has successfully been removed from its node2d
 		}
 		
-		public function onComponentAddedToParentNode(component:ComponentBase):void
+		public function onComponentAddedToNode(component:ComponentBase):void
 		{
-			// called when a component is added on parent node2d
+			// called when a component is added on node2d
 		}
 		
-		public function onComponentRemovedFromParentNode(component:ComponentBase):void
+		public function onComponentRemovedFromNode(component:ComponentBase):void
 		{
-			// called when a component is removed from parent node2d
+			// called when a component is removed from node2d
+		}
+		
+		public function onActivate():void
+		{
+			
+		}
+		
+		public function onDeactivate():void
+		{
+			
 		}
 		
 		public function step(elapsed:Number):void
@@ -86,7 +103,7 @@ package de.nulldesign.nd2dx.components
 			// called on "step" of parent node2d
 		}
 		
-		public function draw(renderSupport:RenderSupportBase):void
+		public function draw(renderer:RendererBase):void
 		{
 			// called on "draw" of parent node2d
 		}
@@ -96,7 +113,14 @@ package de.nulldesign.nd2dx.components
 			// called when device was lost
 		}
 		
-		public function dispose():void
+		/* INTERFACE com.rabbitframework.utils.IPoolable */
+		
+		public function initFromPool():void 
+		{
+			
+		}
+		
+		public function disposeForPool():void 
 		{
 			if ( node ) node.removeComponent(this);
 			
@@ -107,6 +131,52 @@ package de.nulldesign.nd2dx.components
 			node = null;
 			prev = null;
 			next = null;
+		}
+		
+		public function dispose():void 
+		{
+			if ( node ) node.removeComponent(this);
+			
+			stage = null;
+			camera = null;
+			world = null;
+			scene = null;
+			node = null;
+			prev = null;
+			next = null;
+		}
+		
+		public function get isActive():Boolean 
+		{
+			return _isActive;
+		}
+		
+		public function set isActive(value:Boolean):void 
+		{
+			if ( _isActive == value ) return;
+			
+			_isActive = value;
+			
+			if ( _isActive )
+			{
+				onActivate();
+			}
+			else
+			{
+				onDeactivate();
+			}
+		}
+		
+		/* INTERFACE de.nulldesign.nd2dx.utils.IIdentifiable */
+		
+		public function set id(value:String):void 
+		{
+			_id = value;
+		}
+		
+		public function get id():String 
+		{
+			return _id;
 		}
 	}
 

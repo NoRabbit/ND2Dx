@@ -1,20 +1,18 @@
 package de.nulldesign.nd2dx.utils 
 {
-	import de.nulldesign.nd2dx.geom.Mesh2D;
-	import de.nulldesign.nd2dx.geom.Vertex2D;
+	import de.nulldesign.nd2dx.resource.mesh.Mesh2D;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
 	public class MeshUtil 
 	{
-		
-		public static function generateMesh2D(stepsX:uint, stepsY:uint, width:Number, height:Number, meshClass:Class = null):Mesh2D
+		public static function generateMeshData(mesh:Mesh2D, stepsX:uint = 1, stepsY:uint = 1, width:Number = 1.0, height:Number = 1.0):Mesh2D
 		{
-			if ( !meshClass ) meshClass = Mesh2D;
-			var mesh:Mesh2D = new meshClass() as Mesh2D;
+			//mesh.stepsX = stepsX;
+			//mesh.stepsY = stepsY;
 			
-			var vertexList:Vector.<Vertex2D> = mesh.vertexList;
+			var vertexList:Vector.<Vertex3D> = mesh.vertexList;
 			var indexList:Vector.<uint> = mesh.indexList;
 			
 			var texW:Number = width * 0.5;
@@ -26,7 +24,7 @@ package de.nulldesign.nd2dx.utils
 			var currentX:Number;
 			var currentY:Number;
 			
-			var v:Vertex2D;
+			var v:Vertex3D;
 			
 			var sx:Number = width / stepsX;
 			var sy:Number = height / stepsY;
@@ -38,7 +36,7 @@ package de.nulldesign.nd2dx.utils
 					currentX = j * sx - texW;
 					currentY = i * sy - texH;
 					
-					v = new Vertex2D(currentX, currentY, (j / stepsX), (i / stepsY));
+					v = new Vertex3D(currentX, currentY, 0.0, (j / stepsX), (i / stepsY));
 					vertexList.push(v);
 				}
 			}
@@ -64,7 +62,6 @@ package de.nulldesign.nd2dx.utils
 			
 			return mesh;
 		}
-		
 	}
 
 }

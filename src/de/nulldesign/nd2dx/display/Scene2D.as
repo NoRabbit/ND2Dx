@@ -30,7 +30,7 @@
 
 package de.nulldesign.nd2dx.display {
 
-	import de.nulldesign.nd2dx.support.RenderSupportBase;
+	import de.nulldesign.nd2dx.renderers.RendererBase;
 	import flash.display.Stage;
 	import flash.display3D.Context3D;
 	import flash.events.MouseEvent;
@@ -85,9 +85,9 @@ package de.nulldesign.nd2dx.display {
 			super();
 		}
 		
-		override public function drawNode(renderSupport:RenderSupportBase):void 
+		override public function drawNode(renderer:RendererBase):void 
 		{
-			super.drawNode(renderSupport);
+			super.drawNode(renderer);
 			
 			// resize GUI camera if needed
 			if (sceneGUICamera.sceneWidth != camera.sceneWidth) 
@@ -96,7 +96,7 @@ package de.nulldesign.nd2dx.display {
 			}
 			
 			// draw GUI layer
-			sceneGUILayer.drawNode(renderSupport);
+			sceneGUILayer.drawNode(renderer);
 		}
 		
 		override public function processMouseEvent(mousePosition:Vector3D, event:MouseEvent, cameraViewProjectionMatrix:Matrix3D):Node2D
@@ -130,7 +130,8 @@ package de.nulldesign.nd2dx.display {
 		
 		override public function hitTest():Boolean 
 		{
-			return (_mouseX >= 0.0 && _mouseX <= _width && _mouseY >= 0.0 && _mouseY <= _height);
+			//return (_mouseX >= 0.0 && _mouseX <= _width && _mouseY >= 0.0 && _mouseY <= _height);
+			return true;
 		}
 		
 		override public function handleDeviceLoss():void 
@@ -145,7 +146,6 @@ package de.nulldesign.nd2dx.display {
 			
 			sceneGUILayer.dispose();
 			sceneGUILayer = null;
-			
 			sceneGUICamera = null;
 		}
 	}

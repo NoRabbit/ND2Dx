@@ -121,6 +121,9 @@ package de.nulldesign.nd2dx.utils {
 		 * Total drawcalls send to the GPU.
 		 */
 		public static var drawCalls:uint = 0;
+		
+		public static var cpuTime:uint = 0;
+		public static var gpuTime:uint = 0;
 
 		private static var compileTime:Date;
 		private static var instance:Statistics;
@@ -343,6 +346,8 @@ package de.nulldesign.nd2dx.utils {
 			triangles = 0;
 			drawCalls = 0;
 			spritesCulled = 0;
+			cpuTime = 0;
+			gpuTime = 0;
 		}
 
 		/**

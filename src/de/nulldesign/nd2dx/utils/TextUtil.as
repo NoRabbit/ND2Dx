@@ -1,84 +1,72 @@
 package de.nulldesign.nd2dx.utils 
 {
+	import com.rabbitframework.managers.events.EventsManager;
+	import flash.display.Stage;
+	import flash.events.Event;
+	import flash.events.FocusEvent;
+	import flash.text.TextField;
+	import flash.text.TextFieldType;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
 	public class TextUtil 
 	{
-		public static function splitIntoLines(s:String):Array
+		public static var inputTextField:TextField;
+		public static var inputTextFieldEGroup:String = "";
+		public static var inputTextField_onInputCallback:Function = null;
+		public static var inputTextField_onLostFocusCallback:Function = null;
+		
+		public static function setFocusOnInputTextField(stage:Stage, text:String = "", caretIndex:int = 0, onInputCallback:Function = null, onLostFocusCallback:Function = null):TextField
 		{
-			return s.split("\n");
+			var eManager:EventsManager = EventsManager.getInstance();
+			
+			if ( !inputTextFieldEGroup ) inputTextFieldEGroup = eManager.getUniqueGroupId();
+			
+			if ( !inputTextField )
+			{
+				inputTextField = new TextField();
+				//inputTextField.visible  = false;
+				inputTextField.type = TextFieldType.INPUT;
+				inputTextField.textColor = 0xffffff;
+				inputTextField.border = true;
+				inputTextField.x = 100.0;
+				inputTextField.y = 300.0;
+				inputTextField.width = 200.0;
+				inputTextField.height = 50.0;
+				stage.addChildAt(inputTextField, 0);
+			}
+			
+			eManager.removeAllFromGroup(inputTextFieldEGroup);
+			
+			inputTextField_onInputCallback = onInputCallback;
+			inputTextField_onLostFocusCallback = onLostFocusCallback;
+			
+			inputTextField.text = text;
+			inputTextField.setSelection(caretIndex, caretIndex);
+			inputTextField.needsSoftKeyboard = true;
+			inputTextField.requestSoftKeyboard();
+			
+			eManager.add(inputTextField, Event.CHANGE, inputTextField_changeHandler, inputTextFieldEGroup);
+			eManager.add(inputTextField, FocusEvent.FOCUS_OUT, inputTextField_focusOutHandler, inputTextFieldEGroup);
+			
+			return inputTextField;
 		}
 		
-		public static function splitIntoWords(s:String):Array
+		static private function inputTextField_changeHandler(e:Event):void 
 		{
-			return trim(s).split(" ");
-			
-			/*
-			var aWords:Array = new Array();
-			
-			var i:int = 0;
-			var n:int = s.length;
-			var char:String = "";
-			var previousChar:String = "";
-			var nextChar:String = "";
-			
-			var currentWord:String = "";
-			
-			for (; i < n; i++) 
-			{
-				char = s.charAt(i);
-				
-				if ( i < s.length )
-				{
-					nextChar = s.charAt(i + 1);
-				}
-				
-				if ( i == 0 )
-				{
-					// first character of the string, this also is the first character of the first word
-					currentWord += char;
-				}
-				else
-				{
-					if ( isDelimiter(char, previousChar, nextChar) )
-					{
-						// finish word
-						aWords.push(currentWord);
-						
-						// new word
-						currentWord = char;
-					}
-					else
-					{
-						// continue word
-						currentWord += char;
-					}
-				}
-				
-				previousChar = char;
-				char = nextChar = "";
-			}
-			*/
+			if ( inputTextField_onInputCallback ) inputTextField_onInputCallback.call();
 		}
-		/*
-		public static function isDelimiter(char:String, previousChar:String, nextChar:String):Boolean
+		
+		static private function inputTextField_focusOutHandler(e:FocusEvent):void 
 		{
-			// alpha numeric are never delimiters
-			if ( isAlphabetic(char) || isNumeric(char) ) return false;
+			if ( inputTextField_onLostFocusCallback ) inputTextField_onLostFocusCallback.call();
 			
-			// white space is always a delimiter
-			if ( char == " " ) return true;
-			
-			if ( char == "'" || char == '"' )
-			{
-				if ( isAlphaNumeric(previousChar) || isAlphaNumeric(nextChar) ) return false;
-			}
-			
-			return true;
+			EventsManager.getInstance().removeAllFromGroup(inputTextFieldEGroup);
+			inputTextField_onInputCallback = null;
+			inputTextField_onLostFocusCallback = null;
 		}
-		*/
+		
 		public static function isAlphabetic(s:String):Boolean
 		{
 			var pattern:RegExp = /(A-Z)(a-z)/;

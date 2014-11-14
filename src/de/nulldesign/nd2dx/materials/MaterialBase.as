@@ -31,27 +31,37 @@
 package de.nulldesign.nd2dx.materials 
 {	
 	import de.nulldesign.nd2dx.display.Node2D;
-	import de.nulldesign.nd2dx.geom.Mesh2D;
-	import de.nulldesign.nd2dx.materials.shader.Shader2D;
+	import de.nulldesign.nd2dx.managers.resource.ResourceManager;
+	import de.nulldesign.nd2dx.resource.mesh.Mesh2D;
+	import de.nulldesign.nd2dx.resource.shader.Shader2D;
+	import de.nulldesign.nd2dx.resource.shader.ShaderProgram2D;
+	import de.nulldesign.nd2dx.utils.IIdentifiable;
 	import de.nulldesign.nd2dx.utils.NodeBlendMode;
 	import de.nulldesign.nd2dx.utils.Statistics;
+	import flash.display3D.Context3DBlendFactor;
+	import flash.display3D.Program3D;
 
 	import flash.display3D.Context3D;
 	import flash.geom.Matrix3D;
 	import flash.geom.Rectangle;
 
-	public class MaterialBase 
+	public class MaterialBase implements IIdentifiable
 	{
+		public var resourceManager:ResourceManager = ResourceManager.getInstance();
+		
 		public var viewProjectionMatrix:Matrix3D;
 		public var clipSpaceMatrix:Matrix3D = new Matrix3D();
 		public var invalidateClipSpace:Boolean = true;
 		
-		public var scrollRect:Rectangle;
+		public var scissorRect:Rectangle;
 		
-		public var blendMode:NodeBlendMode = BlendModePresets.NORMAL;
+		public var blendModeSrc:String = Context3DBlendFactor.ONE;
+		public var blendModeDst:String = Context3DBlendFactor.ONE_MINUS_SOURCE_ALPHA;
 		
-		public var shaderData:Shader2D;
-		public var invalidateProgram:Boolean = true;
+		public var isReadyForRender:Boolean = false;
+		
+		protected var _shader:Shader2D;
+		public var shaderProgram:ShaderProgram2D;
 		
 		public var mesh:Mesh2D;
 		
@@ -59,6 +69,8 @@ package de.nulldesign.nd2dx.materials
 		protected var _height:Number = 0.0;
 		
 		protected var _node:Node2D;
+		
+		protected var _id:String;
 		
 		public function MaterialBase() 
 		{
@@ -74,6 +86,7 @@ package de.nulldesign.nd2dx.materials
 		{
 			_width = value;
 			if ( _node ) _node._width = _width;
+			invalidateClipSpace = true;
 		}
 		
 		public function get height():Number 
@@ -85,6 +98,7 @@ package de.nulldesign.nd2dx.materials
 		{
 			_height = value;
 			if ( _node ) _node._height = _height;
+			invalidateClipSpace = true;
 		}
 		
 		public function get node():Node2D 
@@ -95,6 +109,7 @@ package de.nulldesign.nd2dx.materials
 		public function set node(value:Node2D):void 
 		{
 			_node = value;
+			
 			if ( _node )
 			{
 				_node._width = _width;
@@ -102,22 +117,39 @@ package de.nulldesign.nd2dx.materials
 			}
 		}
 		
-		public function updateClipSpace():void
+		public function set blendMode(value:NodeBlendMode):void 
 		{
-			clipSpaceMatrix.identity();
-			clipSpaceMatrix.append(_node.worldModelMatrix);
-			invalidateClipSpace = false;
+			blendModeSrc = value.src;
+			blendModeDst = value.dst;
 		}
 		
-		protected function prepareForRender(context:Context3D):void 
+		public function get shader():Shader2D 
 		{
-			if ( invalidateClipSpace || _node.matrixUpdated ) updateClipSpace();
-			context.setBlendFactors(blendMode.src, blendMode.dst);
-			updateProgram(context);
+			return _shader;
+		}
+		
+		public function set shader(value:Shader2D):void 
+		{
+			if ( _shader == value ) return;
+			
+			//if ( _shader ) _shader.unlinkMaterial(this);
+			
+			_shader = value;
+			shaderProgram = null;
+			
+			if ( _shader )
+			{
+				//_shader.linkMaterial(this);
+				updateShaderProperties();
+			}
+			
+			checkIfReadyForRender();
 		}
 
 		public function render(context:Context3D):void 
 		{
+			if ( !isReadyForRender ) return;
+			
 			prepareForRender(context);
 			
 			context.drawTriangles(mesh.indexBuffer, 0, mesh.numTriangles);
@@ -135,15 +167,28 @@ package de.nulldesign.nd2dx.materials
 			throw new Error("You have to implement clearAfterRender for your material");
 		}
 		
+		protected function prepareForRender(context:Context3D):void 
+		{
+			if ( invalidateClipSpace || _node.matrixUpdated ) updateClipSpace();
+			context.setBlendFactors(blendModeSrc, blendModeDst);
+			updateProgram(context);
+		}
+		
+		public function updateClipSpace():void
+		{
+			clipSpaceMatrix.identity();
+			clipSpaceMatrix.append(_node.worldModelMatrix);
+			invalidateClipSpace = false;
+		}
+		
 		protected function updateProgram(context:Context3D):void
 		{
-			if (!shaderData || invalidateProgram)
+			if ( !shaderProgram || !shaderProgram.program )
 			{
-				shaderData = null;
 				initProgram(context);
 			}
 			
-			context.setProgram(shaderData.shader);
+			if( shaderProgram ) context.setProgram(shaderProgram.program);
 		}
 		
 		protected function initProgram(context:Context3D):void 
@@ -152,20 +197,43 @@ package de.nulldesign.nd2dx.materials
 			throw new Error("You have to implement initProgram for your material");
 		}
 		
+		public function updateShaderProperties():void
+		{
+			
+		}
+		
+		public function checkIfReadyForRender():void
+		{
+			isReadyForRender = false;
+		}
+		
 		public function handleDeviceLoss():void 
 		{
-			shaderData = null;
+			shaderProgram = null;
 		}
 		
 		public function dispose():void 
 		{
 			blendMode = null;
-			shaderData = null;
-			scrollRect = null;
+			shader = null;
+			shaderProgram = null;
+			scissorRect = null;
 			node = null;
 			
 			clipSpaceMatrix = null;
 			viewProjectionMatrix = null;
+		}
+		
+		/* INTERFACE de.nulldesign.nd2dx.utils.IIdentifiable */
+		
+		public function set id(value:String):void 
+		{
+			_id = value;
+		}
+		
+		public function get id():String 
+		{
+			return _id;
 		}
 	}
 }
