@@ -17,6 +17,14 @@ package com.rabbitframework.ui.icon
 			
 		}
 		
+		override public function init():void 
+		{
+			super.init();
+			
+			_horizontalAlign = UIBase.HORIZONTAL_ALIGN_CENTER;
+			_verticalAlign = UIBase.VERTICAL_ALIGN_MIDDLE;
+		}
+		
 		override public function draw():void 
 		{
 			if ( bitmap ) bitmap.visible = false;

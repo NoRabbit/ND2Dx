@@ -17,15 +17,8 @@ package de.nulldesign.nd2dx.resource.texture
 			super(allocator);
 		}
 		
-		public function get frames():Vector.<Texture2D> 
+		public function updateNumFrames():void
 		{
-			return _frames;
-		}
-		
-		public function set frames(value:Vector.<Texture2D>):void 
-		{
-			_frames = value;
-			
 			if ( _frames )
 			{
 				numFrames = _frames.length;
@@ -34,6 +27,17 @@ package de.nulldesign.nd2dx.resource.texture
 			{
 				numFrames = 0;
 			}
+		}
+		
+		public function get frames():Vector.<Texture2D> 
+		{
+			return _frames;
+		}
+		
+		public function set frames(value:Vector.<Texture2D>):void 
+		{
+			_frames = value;
+			updateNumFrames();
 		}
 		
 	}

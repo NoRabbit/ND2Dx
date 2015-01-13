@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<shader>
+	<properties>
+		<texture2d label="Texture" alias="textureA">art01</texture2d>
+		<texture2d label="Texture2" alias="textureB">noise01</texture2d>
+		<vector4 label="UVScroll" alias="uvScroll" type="vertex">0.0, 0.0, 1.0, 1.0</vector4>
+		<vector1 label="Speed" alias="speed" type="vertex">0.5</vector1>
+		<vector1 label="Fade" alias="fade" type="vertex">0.5</vector1>
+		<vector1 label="C1" alias="c1" type="vertex">1.0</vector1>
+	</properties>
+	<defines>
+		<REPEAT_CLAMP></REPEAT_CLAMP>
+	</defines>
+	<vertex>
+		<![CDATA[
+		alias va0, position;
+		alias va1.xy, uv;
+		alias vc0, viewProjection;
+		alias vc4, clipSpace;
+		alias vc8, color;
+		
+		temp0 = position;
+		temp0 = mul4x4(temp0, clipSpace);
+		output = mul4x4(temp0, viewProjection);
+		
+		temp0 = uv;
+		
+		temp2 = uv;
+		temp2 *= uvScroll.zw;
+		temp2 += uvScroll.xy;
+		
+		temp1 = color;
+		
+		#if PREMULTIPLIED_ALPHA
+			temp1.x = temp1.x * temp1.w;
+			temp1.y = temp1.y * temp1.w;
+			temp1.z = temp1.z * temp1.w;
+		#endif
+		
+		v0 = temp0;
+		v1 = textureAUVRect;
+		v2 = temp1;
+		v3 = fade;
+		v4 = temp2;
+		v5 = textureBUVRect;
+		v6 = speed;
+		v7 = uv;
+		]]>
+	</vertex>
+	<fragment>
+		<![CDATA[
+		alias v0, texCoordA;
+		alias v1, textureAUVRect;
+		alias v2, color;
+		alias v3, fade;
+		alias v4, texCoordB;
+		alias v5, textureBUVRect;
+		alias v6, speed;
+		alias v7, uv;
+		
+		temp1 = texCoordB;
+		temp1.x = frac(temp1.x);
+		temp1.y = frac(temp1.y);
+		temp1 *= textureBUVRect.zw;
+		temp1 += textureBUVRect.xy;
+		
+		tex temp0, temp1, textureB <2d,mipnone,linear,repeat>;
+		
+		temp1 = texCoordB;
+		temp1.y += speed;
+		temp1.x = frac(temp1.x);
+		temp1.y = frac(temp1.y);
+		
+		temp1 *= textureBUVRect.zw;
+		temp1 += textureBUVRect.xy;
+		
+		
+		
+		tex temp2, temp1, textureB <2d,mipnone,linear,repeat>;
+		
+		temp2.x *= fade;
+		temp2.y *= fade;
+		
+		temp2.x *= temp0.z;
+		temp2.y *= temp0.z;
+		
+		temp4 = texCoordA;
+		temp4.y += temp2.x;
+		
+		temp4.z = temp4.x;
+		
+		temp4.x = frac(temp4.x);
+		temp4.y = frac(temp4.y);
+		
+		temp4 *= textureAUVRect.zw;
+		temp4 += textureAUVRect.xy;
+		
+		tex temp5, temp4, textureA <2d,mipnone,linear,repeat>;
+		
+		temp5 *= color;
+		temp5 *= temp0.w;
+		
+		output = temp5;
+		]]>
+	</fragment>
+</shader>

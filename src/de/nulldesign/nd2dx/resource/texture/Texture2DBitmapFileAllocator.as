@@ -12,9 +12,9 @@ package de.nulldesign.nd2dx.resource.texture
 	{
 		public var loader:AssetLoader;
 		
-		public function Texture2DBitmapFileAllocator(filePath:String, freeLocalResourceAfterAllocated:Boolean = false) 
+		public function Texture2DBitmapFileAllocator(filePath:String, freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
+			super(freeLocalResourceAfterRemoteAllocation);
 			this.filePath = filePath;
 			isExternalLoader = true;
 		}
@@ -50,7 +50,7 @@ package de.nulldesign.nd2dx.resource.texture
 			loader.dispose();
 			loader = null;
 			
-			texture2D.onLocalAllocationError.dispatch();
+			texture2D.isAllocating = false;
 		}
 		
 		private function loader_completeHandler(e:AssetEvent):void 

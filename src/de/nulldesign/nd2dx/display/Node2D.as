@@ -35,7 +35,7 @@ package de.nulldesign.nd2dx.display {
 	import de.nulldesign.nd2dx.components.ComponentBase;
 	import de.nulldesign.nd2dx.components.renderers.RendererComponentBase;
 	import de.nulldesign.nd2dx.components.ui.UIComponent;
-	import de.nulldesign.nd2dx.signals.SignalDispatcher;
+	import com.rabbitframework.signals.SignalDispatcher;
 	import de.nulldesign.nd2dx.renderers.RendererBase;
 	import de.nulldesign.nd2dx.signals.SignalTypes;
 	import de.nulldesign.nd2dx.utils.IIdentifiable;
@@ -67,33 +67,6 @@ package de.nulldesign.nd2dx.display {
 		public var callStepInEditor:Boolean = false;
 		
 		public var poolManager:PoolManager = PoolManager.getInstance();
-		
-		public var _id:String = "";
-		
-		/* INTERFACE de.nulldesign.nd2dx.utils.IIdentifiable */
-		
-		[WGM (isEditable = false)]
-		public function set id(value:String):void 
-		{
-			_id = value;
-		}
-		
-		public function get id():String 
-		{
-			return _id;
-		}
-		
-		[WGM]
-		public var name:String = "";
-		
-		[WGM]
-		public var customClass:String = "";
-		
-		[WGM (isInspectable = false, isSerializable = true, label="labelSerialTest")]
-		public var serialTest:Vector2D = new Vector2D(5, 4);
-		
-		[WGM (isInspectable = false, isSerializable = true, label="label_yoplaboum")]
-		public var yoplaboum:Node2D;
 		
 		public var localModelMatrix:Matrix3D = new Matrix3D();
 		public var worldModelMatrix:Matrix3D = new Matrix3D();
@@ -171,8 +144,139 @@ package de.nulldesign.nd2dx.display {
 		
 		public var scene:Scene2D;
 		
+		// ID, NAME & CUSTOM CLASS
+		public var _id:String = "";
+		
+		/* INTERFACE de.nulldesign.nd2dx.utils.IIdentifiable */
+		
+		[WGM (position = -1000, isEditable = false)]
+		public function set id(value:String):void 
+		{
+			_id = value;
+		}
+		
+		public function get id():String 
+		{
+			return _id;
+		}
+		
+		[WGM (position = -900)]
+		public var name:String = "";
+		
+		[WGM (position = -800)]
+		public var customClass:String = "";
+		
+		// POSITION
+		
+		protected var _x:Number = 0.0;
+		
+		[WGM (position = -700, groupId = "position", groupPosition = 1, groupLabel = "position")]
+		public function set x(value:Number):void
+		{
+			if (_x != value)
+			{
+				_x = value;
+				invalidateMatrix = true;
+			}
+		}
+		
+		public function get x():Number
+		{
+			return _x;
+		}
+		
+		protected var _y:Number = 0.0;
+		
+		[WGM (position = -700, groupId = "position", groupPosition = 2)]
+		public function set y(value:Number):void
+		{
+			if (_y != value)
+			{
+				_y = value;
+				invalidateMatrix = true;
+			}
+		}
+		
+		public function get y():Number
+		{
+			return _y;
+		}
+		
+		protected var _z:Number = 0.0;
+		
+		[WGM (position = -700, groupId = "position", groupPosition = 3)]
+		public function set z(value:Number):void
+		{
+			if (_z != value)
+			{
+				_z = value;
+				invalidateMatrix = true;
+			}
+		}
+		
+		public function get z():Number
+		{
+			return _z;
+		}
+		
+		// SCALE
+		
+		public var _scaleX:Number = 1.0;
+		
+		[WGM (position = -600, groupId = "scale", groupPosition = 1, groupLabel = "scale", label = "x")]
+		public function set scaleX(value:Number):void
+		{
+			if (_scaleX != value)
+			{
+				_scaleX = value;
+				invalidateMatrix = true;
+			}
+		}
+		
+		public function get scaleX():Number
+		{
+			return _scaleX;
+		}
+		
+		public var _scaleY:Number = 1.0;
+		
+		[WGM (position = -600, groupId = "scale", groupPosition = 2, label = "y")]
+		public function set scaleY(value:Number):void
+		{
+			if (_scaleY != value)
+			{
+				_scaleY = value;
+				invalidateMatrix = true;
+			}
+		}
+		
+		public function get scaleY():Number
+		{
+			return _scaleY;
+		}
+		
+		public var _scaleZ:Number = 1.0;
+		
+		[WGM (position = -600, groupId = "scale", groupPosition = 3, label = "z")]
+		public function set scaleZ(value:Number):void
+		{
+			if (_scaleZ != value)
+			{
+				_scaleZ = value;
+				invalidateMatrix = true;
+			}
+		}
+		
+		public function get scaleZ():Number
+		{
+			return _scaleZ;
+		}
+		
+		// SIZE
+		
 		public var _width:Number = 0.0;
 		
+		[WGM (isSerializable = false, position = -500, groupId = "size", groupPosition = 1, groupLabel = "size", label = "w")]
 		public function get width():Number
 		{
 			return Math.abs(_width * _scaleX);
@@ -185,6 +289,7 @@ package de.nulldesign.nd2dx.display {
 		
 		public var _height:Number = 0.0;
 		
+		[WGM (isSerializable = false, position = -500, groupId = "size", groupPosition = 2, label = "h")]
 		public function get height():Number
 		{
 			return Math.abs(_height * _scaleY);
@@ -194,47 +299,7 @@ package de.nulldesign.nd2dx.display {
 			scaleY = value / _height;
 		}
 		
-		protected var _visible:Boolean = true;
-		
-		public function get visible():Boolean
-		{
-			return _visible;
-		}
-		
-		public function set visible(value:Boolean):void
-		{
-			if (_visible != value)
-			{
-				_visible = value;
-				invalidateMatrix = true;
-			}
-		}
-		
-		public var _alpha:Number = 1.0;
-		public var combinedAlpha:Number = 1.0;
-		
-		public function set alpha(value:Number):void
-		{
-			if (_alpha != value)
-			{
-				_alpha = value;
-				invalidateColors = true;
-				
-				if ( _alpha <= 0.0 && _visible )
-				{
-					visible = false;
-				}
-				else if ( _alpha > 0.0 && !_visible )
-				{
-					visible = true;
-				}
-			}
-		}
-		
-		public function get alpha():Number
-		{
-			return _alpha;
-		}
+		// TINT
 		
 		protected var _tintRed:Number = 1.0;
 		protected var _tintGreen:Number = 1.0;
@@ -244,6 +309,7 @@ package de.nulldesign.nd2dx.display {
 		public var combinedTintGreen:Number = 1.0;
 		public var combinedTintBlue:Number = 1.0;
 		
+		[WGM (position = -400, groupId = "tint", groupPosition = 1, groupLabel = "tint", label = "r")]
 		public function get tintRed():Number 
 		{
 			return _tintRed;
@@ -255,6 +321,7 @@ package de.nulldesign.nd2dx.display {
 			invalidateColors = true;
 		}
 		
+		[WGM (position = -400, groupId = "tint", groupPosition = 2, label = "g")]
 		public function get tintGreen():Number 
 		{
 			return _tintGreen;
@@ -266,6 +333,7 @@ package de.nulldesign.nd2dx.display {
 			invalidateColors = true;
 		}
 		
+		[WGM (position = -400, groupId = "tint", groupPosition = 3, label = "b")]
 		public function get tintBlue():Number 
 		{
 			return _tintBlue;
@@ -298,101 +366,53 @@ package de.nulldesign.nd2dx.display {
 			}
 		}
 		
-		public var _scaleX:Number = 1.0;
+		// VISIBILITY
 		
-		public function set scaleX(value:Number):void
+		protected var _visible:Boolean = true;
+		
+		[WGM]
+		public function get visible():Boolean
 		{
-			if (_scaleX != value)
+			return _visible;
+		}
+		
+		public function set visible(value:Boolean):void
+		{
+			if (_visible != value)
 			{
-				_scaleX = value;
+				_visible = value;
 				invalidateMatrix = true;
 			}
 		}
 		
-		public function get scaleX():Number
-		{
-			return _scaleX;
-		}
+		public var _alpha:Number = 1.0;
+		public var combinedAlpha:Number = 1.0;
 		
-		public var _scaleY:Number = 1.0;
-		
-		public function set scaleY(value:Number):void
+		[WGM]
+		public function set alpha(value:Number):void
 		{
-			if (_scaleY != value)
+			if (_alpha != value)
 			{
-				_scaleY = value;
-				invalidateMatrix = true;
+				_alpha = value;
+				invalidateColors = true;
+				
+				//if ( _alpha <= 0.0 && _visible )
+				//{
+					//visible = false;
+				//}
+				//else if ( _alpha > 0.0 && !_visible )
+				//{
+					//visible = true;
+				//}
 			}
 		}
 		
-		public function get scaleY():Number
+		public function get alpha():Number
 		{
-			return _scaleY;
+			return _alpha;
 		}
 		
-		public var _scaleZ:Number = 1.0;
 		
-		public function set scaleZ(value:Number):void
-		{
-			if (_scaleZ != value)
-			{
-				_scaleZ = value;
-				invalidateMatrix = true;
-			}
-		}
-		
-		public function get scaleZ():Number
-		{
-			return _scaleZ;
-		}
-
-		protected var _x:Number = 0.0;
-
-		public function set x(value:Number):void
-		{
-			if (_x != value)
-			{
-				_x = value;
-				invalidateMatrix = true;
-			}
-		}
-		
-		public function get x():Number
-		{
-			return _x;
-		}
-
-		protected var _y:Number = 0.0;
-
-		public function set y(value:Number):void
-		{
-			if (_y != value)
-			{
-				_y = value;
-				invalidateMatrix = true;
-			}
-		}
-		
-		public function get y():Number
-		{
-			return _y;
-		}
-		
-		protected var _z:Number = 0.0;
-		
-		public function set z(value:Number):void
-		{
-			if (_z != value)
-			{
-				_z = value;
-				invalidateMatrix = true;
-			}
-		}
-		
-		public function get z():Number
-		{
-			return _z;
-		}
 		
 		protected var _pivot:Vector3D = new Vector3D(0.0, 0.0, 0.0);
 		
@@ -444,8 +464,11 @@ package de.nulldesign.nd2dx.display {
 			return _rotationZ;
 		}
 		
+		// ROTATION
+		
 		protected var _rotationX:Number = 0.0;
 		
+		[WGM (position = -300, groupId = "rotation", groupPosition = 1, groupLabel = "rotation", label = "x")]
 		public function set rotationX(value:Number):void
 		{
 			if (_rotationX != value)
@@ -462,6 +485,7 @@ package de.nulldesign.nd2dx.display {
 		
 		protected var _rotationY:Number = 0.0;
 		
+		[WGM (position = -300, groupId = "rotation", groupPosition = 2, groupLabel = "rotation", label = "y")]
 		public function set rotationY(value:Number):void
 		{
 			if (_rotationY != value)
@@ -478,6 +502,7 @@ package de.nulldesign.nd2dx.display {
 		
 		protected var _rotationZ:Number = 0.0;
 		
+		[WGM (position = -300, groupId = "rotation", groupPosition = 3, groupLabel = "rotation", label = "z")]
 		public function set rotationZ(value:Number):void
 		{
 			if (_rotationZ != value)
@@ -625,7 +650,7 @@ package de.nulldesign.nd2dx.display {
 					// no children, that means this node is the front most node of its hierarchy
 					updateMousePosition(mousePosition, cameraViewProjectionMatrix);
 					
-					if ( hitTest() ) result = this;
+					if ( hitTest(_mouseX, _mouseY) ) result = this;
 				}
 			}
 			
@@ -656,31 +681,21 @@ package de.nulldesign.nd2dx.display {
 		 * Overwrite and do your own hitTest if you like
 		 * @return
 		 */
-		public function hitTest():Boolean
+		public function hitTest(x:Number, y:Number):Boolean
 		{
 			if ( uiComponent )
 			{
-				return _mouseX >= 0.0 - hitTestMargin
-				&& _mouseX <= uiComponent.uiWidth + hitTestMargin
-				&& _mouseY >= 0.0 - hitTestMargin
-				&& _mouseY <= uiComponent.uiHeight + hitTestMargin;
+				return uiComponent.hitTest(x, y);
 			}
 			else
 			{
-				// even faster isNaN()	http://jacksondunstan.com/articles/983
-				if (_width != _width || _height != _height)
+				for (var component:ComponentBase = componentFirst; component; component = component.next)
 				{
-					return false;
+					if( component.hitTest(x, y) ) return true;
 				}
-				
-				var halfWidth:Number = _width >> 1;
-				var halfHeight:Number = _height >> 1;
-				
-				return _mouseX >= -halfWidth - hitTestMargin
-					&& _mouseX <= halfWidth + hitTestMargin
-					&& _mouseY >= -halfHeight - hitTestMargin
-					&& _mouseY <= halfHeight + hitTestMargin;
 			}
+			
+			return false;
 		}
 		
 		internal function setReferences(stage:Stage, camera:Camera2D, world:World2D, scene:Scene2D):void
@@ -712,12 +727,12 @@ package de.nulldesign.nd2dx.display {
 				if (stage)
 				{
 					_stage = stage;
-					getSignal(Event.ADDED_TO_STAGE).dispatch();
+					dispatchSignal(Event.ADDED_TO_STAGE);
 				}
 				else
 				{
 					_stage = stage;
-					getSignal(Event.REMOVED_FROM_STAGE).dispatch();
+					dispatchSignal(Event.REMOVED_FROM_STAGE);
 				}
 			}
 			
@@ -1195,10 +1210,10 @@ package de.nulldesign.nd2dx.display {
 			component.setReferences(stage, camera, world, scene, this);
 			component.onAddedToNode();
 			
-			getSignal(SignalTypes.OnComponentAddedToNode).dispatchData(component);
+			dispatchSignal(SignalTypes.COMPONENT_ADDED_TO_NODE, component);
 			
-			addSignalListener(SignalTypes.OnComponentAddedToNode, component.onComponentAddedToNode);
-			addSignalListener(SignalTypes.OnComponentRemovedFromNode, component.onComponentRemovedFromNode);
+			addSignalListener(SignalTypes.COMPONENT_ADDED_TO_NODE, component.onComponentAddedToNode);
+			addSignalListener(SignalTypes.COMPONENT_REMOVED_FROM_NODE, component.onComponentRemovedFromNode);
 			
 			return component;
 		}
@@ -1232,12 +1247,12 @@ package de.nulldesign.nd2dx.display {
 			
 			
 			
-			removeSignalListener(SignalTypes.OnComponentAddedToNode, component.onComponentAddedToNode);
-			removeSignalListener(SignalTypes.OnComponentRemovedFromNode, component.onComponentRemovedFromNode);
+			removeSignalListener(SignalTypes.COMPONENT_ADDED_TO_NODE, component.onComponentAddedToNode);
+			removeSignalListener(SignalTypes.COMPONENT_REMOVED_FROM_NODE, component.onComponentRemovedFromNode);
 			
 			component.onRemovedFromNode();
 			
-			getSignal(SignalTypes.OnComponentRemovedFromNode).dispatchData(component);
+			dispatchSignal(SignalTypes.COMPONENT_REMOVED_FROM_NODE, component);
 		}
 		
 		protected function unlinkComponent(component:ComponentBase):void 

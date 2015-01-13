@@ -13,52 +13,34 @@ package de.nulldesign.nd2dx.utils
 		public var u:Number;
 		public var v:Number;
 		
-		/**
-		 * the color must be in ARGB format.
-		 */
-		public var color:uint = 0xFFFFFFFF;
-
-		public var bufferIdx:int = -1;
+		public var a:Number;
+		public var r:Number;
+		public var g:Number;
+		public var b:Number;
 		
-		public function Vertex3D(x:Number = 0.0, y:Number = 0.0, z:Number = 0.0, u:Number = 0.0, v:Number = 0.0) 
+		public function Vertex3D(x:Number = 0.0, y:Number = 0.0, z:Number = 0.0, u:Number = 0.0, v:Number = 0.0, r:Number = 1.0, g:Number = 1.0, b:Number = 1.0, a:Number = 1.0) 
 		{
 			this.x = x;
 			this.y = y;
 			this.z = z;
+			
 			this.u = u;
 			this.v = v;
-		}
-		
-		public function get a():Number 
-		{
-			return ((color >> 24) & 0xFF) / 0xFF;
-		}
-
-		public function get r():Number 
-		{
-			return ((color >> 16) & 0xFF) / 0xFF;
-		}
-
-		public function get g():Number 
-		{
-			return ((color >> 8) & 0xFF) / 0xFF;
-		}
-
-		public function get b():Number 
-		{
-			return (color & 0xFF) / 0xFF;
+			
+			this.r = r;
+			this.g = g;
+			this.b = b;
+			this.a = a;
 		}
 
 		public function clone():Vertex3D
 		{
-			var vertex:Vertex3D = new Vertex3D(x, y, u, v);
-			vertex.color = color;
-			return vertex;
+			return  new Vertex3D(x, y, z, u, v, r, g, b, a);
 		}
 		
 		public function toString():String 
 		{
-			return "Vertex3D: " + x + ", " + y + " (" + u + "/" + v + ")";
+			return "Vertex3D: " + x + ", " + y + ", " + z + " (" + u + "/" + v + ") (" + r + ", " + g + ", " + b + ", " + a + ")";
 		}
 	}
 

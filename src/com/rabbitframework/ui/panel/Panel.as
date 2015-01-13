@@ -1,10 +1,10 @@
 package com.rabbitframework.ui.panel 
 {
-	import com.rabbitframework.ui.groups.Group;
+	import com.rabbitframework.ui.layout.UIVerticalLayout;
 	import com.rabbitframework.ui.scrollbar.VScrollBar;
 	import com.rabbitframework.ui.styles.UIStyles;
 	import com.rabbitframework.ui.UIBase;
-	import com.rabbitframework.ui.UIContainerBase;
+	import com.rabbitframework.ui.UIContainer;
 	import flash.display.DisplayObjectContainer;
 	import flash.display.Shape;
 	import flash.display.Sprite;
@@ -17,7 +17,7 @@ package com.rabbitframework.ui.panel
 	 * ...
 	 * @author Thomas John
 	 */
-	public class Panel extends Group
+	public class Panel extends UIContainer
 	{
 		public var bg:Sprite;
 		public var bgTitle:Sprite;
@@ -44,20 +44,9 @@ package com.rabbitframework.ui.panel
 			itemsVScrollBar.enabled = false;
 			itemsVScrollBar.visible = false;
 			
-			minUIWidth = 50.0;
-			minUIHeight = 40.0;
-			
 			super();
 			
 			dataSource = title;
-			
-			_paddingTop = 34.0;
-			_paddingBottom = 8.0;
-			_paddingLeft = 8.0;
-			_paddingRight = 8.0;
-			
-			_extendUIWidthToTotalItemsWidth = false;
-			_extendUIHeightToTotalItemsHeight = false;
 			
 			bgTitle.mouseEnabled = bgTitle.useHandCursor = bgTitle.buttonMode = true;
 			buttonResize.mouseEnabled = buttonResize.useHandCursor = buttonResize.buttonMode = true;
@@ -67,6 +56,19 @@ package com.rabbitframework.ui.panel
 		override public function init():void 
 		{
 			super.init();
+			
+			minUIWidth = 50.0;
+			minUIHeight = 40.0;
+			
+			_layout = UIVerticalLayout.reference;
+			
+			_paddingTop = 34.0;
+			_paddingBottom = 8.0;
+			_paddingLeft = 8.0;
+			_paddingRight = 8.0;
+			
+			_extendUIWidthToTotalItemsWidth = false;
+			_extendUIHeightToTotalItemsHeight = false;
 			
 			eManager.add(bgTitle, MouseEvent.MOUSE_DOWN, bgTitle_mouseDownHandler, eGroup);
 			eManager.add(buttonResize, MouseEvent.MOUSE_DOWN, buttonResize_mouseDownHandler, eGroup);
@@ -217,12 +219,12 @@ package com.rabbitframework.ui.panel
 			txt.text = dataProviderManager.getDataSourceLabel(_dataSource);
 		}
 		
-		override public function get uiParent():UIContainerBase 
+		override public function get uiParent():UIContainer 
 		{
 			return super.uiParent;
 		}
 		
-		override public function set uiParent(value:UIContainerBase):void 
+		override public function set uiParent(value:UIContainer):void 
 		{
 			super.uiParent = value;
 			

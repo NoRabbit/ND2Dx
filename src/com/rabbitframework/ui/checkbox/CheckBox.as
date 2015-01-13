@@ -1,10 +1,10 @@
 package com.rabbitframework.ui.checkbox 
 {
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.button.Button;
 	import com.rabbitframework.ui.styles.UIStyles;
 	import flash.display.Sprite;
 	import flash.events.MouseEvent;
-	import org.osflash.signals.Signal;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -15,7 +15,7 @@ package com.rabbitframework.ui.checkbox
 		
 		private var _selected:Boolean = false;
 		
-		public var onSelect:Signal = new Signal(Boolean);
+		public var onSelect:Signal = new Signal();
 		
 		public function CheckBox() 
 		{
@@ -28,6 +28,8 @@ package com.rabbitframework.ui.checkbox
 			super.initFromPool();
 			
 			selected = false;
+			uiWidth = minUIWidth = 14.0;
+			uiHeight = minUIHeight = 14.0;
 		}
 		
 		override public function draw():void 
@@ -71,7 +73,7 @@ package com.rabbitframework.ui.checkbox
 				icon.visible = false;
 			}
 			
-			onSelect.dispatch(_selected);
+			onSelect.dispatchData(_selected);
 		}
 		
 		override public function disposeForPool():void 
@@ -86,6 +88,7 @@ package com.rabbitframework.ui.checkbox
 			super.dispose();
 			
 			onSelect.removeAll();
+			onSelect = null;
 		}
 	}
 

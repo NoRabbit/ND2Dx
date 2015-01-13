@@ -27,6 +27,7 @@ package showdown
 	import showdown.scenes.cube3d.Cube3DScene;
 	import showdown.scenes.directgpu3dstresstest.DirectGPU3DStressTestScene;
 	import showdown.scenes.directgpustresstest.DirectGPUStressTestScene;
+	import showdown.scenes.dynamicmesh.DynamicMeshScene;
 	import showdown.scenes.dynamicshader.DynamicShaderScene;
 	import showdown.scenes.graph3dstresstest.Graph3DStressTestScene;
 	import showdown.scenes.graphstresstest.GraphStressTestScene;
@@ -55,6 +56,7 @@ package showdown
 		{
 			Assets.init();
 			
+			vScenes.push(new DynamicMeshScene());
 			vScenes.push(new DynamicShaderScene());
 			
 			vScenes.push(new Cube3DScene());

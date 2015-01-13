@@ -137,7 +137,7 @@ package de.nulldesign.nd2dx.components.renderers
 			if ( node.matrixUpdated ) updateClipSpace();
 			
 			// upload mesh buffers if needed
-			if ( _mesh.needUploadVertexBuffer ) _mesh.uploadBuffers(context);
+			if ( !_mesh.isRemotelyAllocated ) _mesh.allocator.allocateRemoteResource(renderer.context);
 			
 			// colors
 			vVertexProgramConstants[0] = node.combinedTintRed;

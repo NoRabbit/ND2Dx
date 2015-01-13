@@ -43,6 +43,14 @@ package de.nulldesign.nd2dx.components.ui
 			initUI();
 		}
 		
+		override public function hitTest(x:Number, y:Number):Boolean 
+		{
+			return x >= 0.0 - node.hitTestMargin
+				&& x <= uiWidth + node.hitTestMargin
+				&& y >= 0.0 - node.hitTestMargin
+				&& y <= uiHeight + node.hitTestMargin;
+		}
+		
 		public function initUI():void
 		{
 			paddingTop = 0.0;

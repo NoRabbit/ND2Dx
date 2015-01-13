@@ -24,13 +24,14 @@ package de.nulldesign.nd2dx.resource.texture
 		public var bitmapData:BitmapData;
 		public var compressedBitmap:ByteArray;
 		
-		public function Texture2DAllocator(freeLocalResourceAfterAllocated:Boolean = false) 
+		public function Texture2DAllocator(freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
+			super(freeLocalResourceAfterRemoteAllocation);
 		}
 		
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
+			if ( texture2D.isAllocating ) return;
 			if ( texture2D.isLocallyAllocated && !forceAllocation ) return;
 			
 			if ( bitmapData )
@@ -59,16 +60,9 @@ package de.nulldesign.nd2dx.resource.texture
 				
 				texture2D.updateUvRect();
 				
+				// to force update signal dispatch
+				texture2D.isLocallyAllocated = false;
 				texture2D.isLocallyAllocated = true;
-				texture2D.onLocallyAllocated.dispatch();
-				
-				var i:int = 0;
-				var n:int = texture2D.vSubTextures.length;
-				
-				for (; i < n; i++) 
-				{
-					texture2D.vSubTextures[i].onLocallyAllocated.dispatch();
-				}
 			}
 			
 			// we don't free local resource here (only after it has been uploaded to gpu
@@ -76,9 +70,9 @@ package de.nulldesign.nd2dx.resource.texture
 		
 		override public function allocateRemoteResource(context:Context3D, forceAllocation:Boolean = false):void 
 		{
-			if ( texture2D.isRemotellyAllocated && !forceAllocation ) return;
+			if ( texture2D.isRemotelyAllocated && !forceAllocation ) return;
 			
-			if ( texture2D.isRemotellyAllocated ) freeRemoteResource();
+			if ( texture2D.isRemotelyAllocated ) freeRemoteResource();
 			
 			// if we don't have a local resource, try to allocate it
 			if ( !texture2D.isLocallyAllocated )
@@ -103,13 +97,14 @@ package de.nulldesign.nd2dx.resource.texture
 				
 				texture2D.currentContext3D = context;
 				
-				texture2D.isRemotellyAllocated = true;
-				texture2D.onRemotelyAllocated.dispatch();
+				// force update signal dispatch
+				texture2D.isRemotelyAllocated = false;
+				texture2D.isRemotelyAllocated = true;
 				
-				//trace(this, "allocateRemoteResource", texture2D.texture, freeLocalResourceAfterAllocated);
+				//trace(this, "allocateRemoteResource", texture2D.texture, freeLocalResourceAfterRemoteAllocation);
 				
 				// free local resource if necessary
-				if ( texture2D.isLocallyAllocated && freeLocalResourceAfterAllocated ) freeLocalResource();
+				if ( texture2D.isLocallyAllocated && freeLocalResourceAfterRemoteAllocation ) freeLocalResource();
 			}
 		}
 		
@@ -121,7 +116,6 @@ package de.nulldesign.nd2dx.resource.texture
 			bitmapData = null;
 			
 			texture2D.isLocallyAllocated = false;
-			texture2D.onLocallyDeallocated.dispatch();
 		}
 		
 		override public function freeRemoteResource():void 
@@ -135,8 +129,7 @@ package de.nulldesign.nd2dx.resource.texture
 			
 			texture2D.memoryUsed = 0;
 			
-			texture2D.isRemotellyAllocated = false;
-			texture2D.onRemotelyDeallocated.dispatch();
+			texture2D.isRemotelyAllocated = false;
 		}
 		
 		override public function get resource():ResourceBase 

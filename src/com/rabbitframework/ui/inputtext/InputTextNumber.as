@@ -60,6 +60,9 @@ package com.rabbitframework.ui.inputtext
 			currentPoint.x = startPoint.x = stage.mouseX;
 			currentPoint.y = startPoint.y = stage.mouseY;
 			
+			previousValue = txt.text;
+			onChangeStart.dispatchData(previousValue);
+			
 			currentValue = Number(txt.text);
 			currentDecimalsCount = MathUtils.getDecimalsCount(currentValue);
 			currentDecimalsCount = Math.max(currentDecimalsCount, MathUtils.getDecimalsCount(precision));
@@ -121,6 +124,8 @@ package com.rabbitframework.ui.inputtext
 		private function stage_mouseUpHandler(e:MouseEvent):void 
 		{
 			eManager.removeAllFromGroup(eGroup + ".efup");
+			
+			if ( txt.text != previousValue ) onChangeComplete.dispatchData(txt.text);
 		}
 	}
 

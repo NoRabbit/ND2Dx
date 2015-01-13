@@ -6,7 +6,7 @@ package de.nulldesign.nd2dx.resource.font
 	 */
 	public class BitmapFont2DItemWord extends BitmapFont2DItem
 	{
-		public var vChars:Vector.<BitmapFont2DChar> = new Vector.<BitmapFont2DChar>();
+		public var vItems:Vector.<BitmapFont2DItem> = new Vector.<BitmapFont2DItem>();
 		
 		public var word:String = "";
 		

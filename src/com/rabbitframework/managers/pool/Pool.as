@@ -42,6 +42,8 @@ package com.rabbitframework.managers.pool
 		{
 			if ( inactiveObjects.length <= 0 ) populatePool();
 			var object:IPoolable = inactiveObjects.pop() as IPoolable;
+			//trace(this, "getObject", classObject, ((object as Object).hasOwnProperty("eGroup") ? object["eGroup"] : "no eGroup"));
+			
 			activeObjects.push(object);
 			object.initFromPool();
 			return object;

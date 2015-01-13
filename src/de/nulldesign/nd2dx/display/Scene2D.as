@@ -128,7 +128,7 @@ package de.nulldesign.nd2dx.display {
 			super.setReferences(stage, camera, world, scene);
 		}
 		
-		override public function hitTest():Boolean 
+		override public function hitTest(x:Number, y:Number):Boolean 
 		{
 			//return (_mouseX >= 0.0 && _mouseX <= _width && _mouseY >= 0.0 && _mouseY <= _height);
 			return true;

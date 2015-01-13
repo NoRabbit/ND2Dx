@@ -16,11 +16,13 @@ package de.nulldesign.nd2dx.resource.shader
 		{
 			this.filePath = filePath;
 			isExternalLoader = true;
+			super(null);
 		}
 		
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
 			if ( shader.isAllocating ) return;
+			if ( shader.isLocallyAllocated && !forceAllocation ) return;
 			if ( !filePath ) return;
 			
 			shader.isAllocating = true;
@@ -49,7 +51,7 @@ package de.nulldesign.nd2dx.resource.shader
 			loader.dispose();
 			loader = null;
 			
-			shader.onLocalAllocationError.dispatch();
+			shader.isAllocating = false;
 		}
 		
 		private function loader_completeHandler(e:AssetEvent):void 
@@ -58,12 +60,12 @@ package de.nulldesign.nd2dx.resource.shader
 			
 			var xml:XML = new XML(e.asset.getContent());
 			
-			setDataFromXML(xml);
-			
 			loader.dispose();
 			loader = null;
 			
 			shader.isAllocating = false;
+			
+			super.allocateLocalResource(null, true);
 		}
 	}
 

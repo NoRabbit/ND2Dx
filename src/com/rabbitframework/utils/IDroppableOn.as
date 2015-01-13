@@ -1,6 +1,6 @@
 package com.rabbitframework.utils 
 {
-	import wgmeditor.managers.draganddrop.DragAndDropObject;
+	import com.rabbitframework.managers.draganddrop.DragAndDropObject;
 	
 	/**
 	 * ...

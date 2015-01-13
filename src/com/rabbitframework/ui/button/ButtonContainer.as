@@ -1,25 +1,32 @@
 package com.rabbitframework.ui.button 
 {
-	import com.rabbitframework.ui.groups.Group;
+	import com.rabbitframework.signals.Signal;
+	import com.rabbitframework.ui.layout.UIHorizontalLayout;
 	import com.rabbitframework.ui.styles.UIStyles;
 	import com.rabbitframework.ui.UIBase;
+	import com.rabbitframework.ui.UIContainer;
 	import flash.display.Sprite;
 	import flash.events.MouseEvent;
-	import org.osflash.signals.Signal;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
-	public class ButtonContainer extends Group
+	public class ButtonContainer extends UIContainer
 	{
 		public var bg:Sprite;
 		
-		public var onMouseDown:Signal = new Signal(ButtonContainer);
-		public var onMouseUp:Signal = new Signal(ButtonContainer);
-		public var onMouseClick:Signal = new Signal(ButtonContainer);
+		public var onMouseDown:Signal = new Signal();
+		public var onMouseUp:Signal = new Signal();
+		public var onMouseClick:Signal = new Signal();
 		
 		public function ButtonContainer() 
 		{
+		}
+		
+		override public function init():void 
+		{
+			super.init();
+			
 			minUIWidth = 16.0;
 			minUIHeight = 16.0;
 			
@@ -27,18 +34,14 @@ package com.rabbitframework.ui.button
 			_paddingLeft = 8.0;
 			_paddingRight = 8.0;
 			_paddingTop = 4.0;
-			_spaceSize = 4.0;
-			_isHorizontal = true;
+			_itemSpace = 4.0;
+			
+			_layout = UIHorizontalLayout.reference;
 			
 			mouseEnabled = true;
 			useHandCursor = true;
 			buttonMode = true;
 			mouseChildren = false;
-		}
-		
-		override public function init():void 
-		{
-			super.init();
 			
 			bg.getChildAt(0).transform.colorTransform = UIStyles.getIdentityColorTransform();
 			
@@ -50,20 +53,20 @@ package com.rabbitframework.ui.button
 		{
 			eManager.add(stage, MouseEvent.MOUSE_UP, _onMouseUpHandler, [eGroup, eGroup + ".up"]);
 			onMouseDownHandler(e);
-			onMouseDown.dispatch(this);
+			onMouseDown.dispatchData(this);
 		}
 		
 		private function _onMouseUpHandler(e:MouseEvent):void 
 		{
 			eManager.removeAllFromGroup(eGroup + ".up");
 			onMouseUpHandler(e);
-			onMouseUp.dispatch(this);
+			onMouseUp.dispatchData(this);
 		}
 		
 		private function _onMouseClickHandler(e:MouseEvent):void 
 		{
 			onClickHandler(e);
-			onMouseClick.dispatch(this);
+			onMouseClick.dispatchData(this);
 		}
 		
 		protected function onMouseDownHandler(e:MouseEvent):void 

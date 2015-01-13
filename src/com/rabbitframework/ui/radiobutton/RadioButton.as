@@ -1,11 +1,11 @@
 package com.rabbitframework.ui.radiobutton 
 {
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.button.Button;
 	import com.rabbitframework.ui.styles.UIStyles;
 	import flash.display.Sprite;
 	import flash.events.MouseEvent;
 	import flash.text.TextField;
-	import org.osflash.signals.Signal;
 	
 	/**
 	 * ...
@@ -21,8 +21,8 @@ package com.rabbitframework.ui.radiobutton
 		private var _selected:Boolean = false;
 		public var group:String = "";
 		
-		public var onSelect:Signal = new Signal(RadioButton);
-		public static var onGroupSelect:Signal = new Signal(String, RadioButton);
+		public var onSelect:Signal = new Signal();
+		public static var onGroupSelect:Signal = new Signal();
 		
 		public function RadioButton(dataSource:Object = null, groupId:String = "") 
 		{
@@ -87,7 +87,7 @@ package com.rabbitframework.ui.radiobutton
 			
 			_selected = value;
 			
-			onGroupSelect.dispatch(group, this);
+			onGroupSelect.dispatchData(group, this);
 			
 			if ( _selected )
 			{
@@ -112,7 +112,7 @@ package com.rabbitframework.ui.radiobutton
 				icon.visible = false;
 			}
 			
-			onSelect.dispatch(this);
+			onSelect.dispatchData(this);
 		}
 		
 		public function getSelectedRadioButtonInGroup():RadioButton

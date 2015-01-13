@@ -10,9 +10,9 @@ package de.nulldesign.nd2dx.resource.texture
 	{
 		public var bitmapClass:Class;
 		
-		public function Texture2DBitmapClassAllocator(bitmapClass:Class, freeLocalResourceAfterAllocated:Boolean = false) 
+		public function Texture2DBitmapClassAllocator(bitmapClass:Class, freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
+			super(freeLocalResourceAfterRemoteAllocation);
 			this.bitmapClass = bitmapClass;
 		}
 		

@@ -1,12 +1,12 @@
 package com.rabbitframework.ui.scrollbar 
 {
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.button.Button;
 	import com.rabbitframework.ui.button.ButtonDrag;
 	import com.rabbitframework.ui.UIBase;
 	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
-	import org.osflash.signals.Signal;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -24,12 +24,9 @@ package com.rabbitframework.ui.scrollbar
 		private var _value:Number = 0.0;
 		private var _valuePrct:Number = 0.0;
 		
-		public var onChange:Signal = new Signal(Number);
-		
 		public function VScrollBar() 
 		{
 			minUIWidth = 14.0;
-			//setSize(14.0, 200.0);
 		}
 		
 		override public function init():void 
@@ -90,7 +87,7 @@ package com.rabbitframework.ui.scrollbar
 			
 			_value = _minimum + ((_maximum - _minimum) * prct);
 			
-			onChange.dispatch(_value);
+			onChange.dispatchData(_value);
 		}
 		
 		public function getMinMaxDistance():Number
@@ -146,7 +143,7 @@ package com.rabbitframework.ui.scrollbar
 			
 			draw();
 			
-			onChange.dispatch(_value);
+			onChange.dispatchData(_value);
 		}
 		
 		public function get valuePrct():Number 
@@ -188,14 +185,11 @@ package com.rabbitframework.ui.scrollbar
 		override public function disposeForPool():void 
 		{
 			super.disposeForPool();
-			onChange.removeAll();
 		}
 		
 		override public function dispose():void 
 		{
 			super.dispose();
-			onChange.removeAll();
-			onChange = null;
 			bg = null;
 			buttonBar = null;
 		}

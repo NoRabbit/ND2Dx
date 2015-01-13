@@ -1,8 +1,8 @@
 package com.rabbitframework.ui.button 
 {
+	import com.rabbitframework.signals.Signal;
 	import flash.events.MouseEvent;
 	import flash.geom.Rectangle;
-	import org.osflash.signals.Signal;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -11,8 +11,8 @@ package com.rabbitframework.ui.button
 	{
 		public var rectDrag:Rectangle = new Rectangle();
 		
-		public var onStartDrag:Signal = new Signal(ButtonDrag);
-		public var onStopDrag:Signal = new Signal(ButtonDrag);
+		public var onStartDrag:Signal = new Signal();
+		public var onStopDrag:Signal = new Signal();
 		
 		public function ButtonDrag() 
 		{
@@ -23,14 +23,14 @@ package com.rabbitframework.ui.button
 		{
 			super.onMouseDownHandler(e);
 			startDrag(false, rectDrag);
-			onStartDrag.dispatch(this);
+			onStartDrag.dispatchData(this);
 		}
 		
 		override protected function onMouseUpHandler(e:MouseEvent):void 
 		{
 			super.onMouseUpHandler(e);
 			stopDrag();
-			onStopDrag.dispatch(this);
+			onStopDrag.dispatchData(this);
 		}
 		
 		override public function disposeForPool():void 

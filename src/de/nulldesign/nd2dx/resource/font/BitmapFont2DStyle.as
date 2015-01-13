@@ -10,8 +10,6 @@ package de.nulldesign.nd2dx.resource.font
 	 */
 	public class BitmapFont2DStyle extends ResourceBase
 	{
-		public var name:String = "";
-		
 		public var texture:Texture2D;
 		
 		public var face:String = "";

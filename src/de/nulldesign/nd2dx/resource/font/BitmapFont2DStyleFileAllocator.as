@@ -11,9 +11,9 @@ package de.nulldesign.nd2dx.resource.font
 	{
 		public var loader:AssetUrlLoader;
 		
-		public function BitmapFont2DStyleFileAllocator(filePath:String, texture:Object, freeLocalResourceAfterAllocated:Boolean=false) 
+		public function BitmapFont2DStyleFileAllocator(filePath:String, texture:Object, freeLocalResourceAfterRemoteAllocation:Boolean=false) 
 		{
-			super(null, texture, freeLocalResourceAfterAllocated);
+			super(null, texture, freeLocalResourceAfterRemoteAllocation);
 			this.filePath = filePath;
 			isExternalLoader = true;
 		}
@@ -21,6 +21,8 @@ package de.nulldesign.nd2dx.resource.font
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
 			if ( bitmapFont2DStyle.isAllocating ) return;
+			if ( bitmapFont2DStyle.isLocallyAllocated && !forceAllocation ) return;
+			
 			bitmapFont2DStyle.isAllocating = true;
 			
 			eManager.removeAllFromGroup(eGroup + ".loader");
@@ -47,7 +49,7 @@ package de.nulldesign.nd2dx.resource.font
 			loader.dispose();
 			loader = null;
 			
-			bitmapFont2DStyle.onLocalAllocationError.dispatch();
+			bitmapFont2DStyle.isAllocating = false;
 		}
 		
 		private function loader_completeHandler(e:AssetEvent):void 

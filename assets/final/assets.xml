@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with TexturePacker http://texturepacker.com-->
+<!-- $TexturePacker:SmartUpdate:a74ba5a85a72b00495b4e4fecafcb8cd$ -->
+<TextureAtlas imagePath="assets.png">
+    <SubTexture name="RTS_Crate" x="0" y="547" width="256" height="256"/>
+    <SubTexture name="aim" x="857" y="95" width="66" height="66"/>
+    <SubTexture name="art01" x="488" y="526" width="256" height="256"/>
+    <SubTexture name="bnp_sans_cond_36" x="291" y="817" width="252" height="80" frameX="-1" frameY="-2" frameWidth="256" frameHeight="128"/>
+    <SubTexture name="bug01" x="779" y="235" width="226" height="226" frameX="-11" frameY="-12" frameWidth="250" frameHeight="250"/>
+    <SubTexture name="button_blue01" x="260" y="1470" width="208" height="69"/>
+    <SubTexture name="fence" x="0" y="0" width="453" height="512"/>
+    <SubTexture name="meteor_short_00000" x="520" y="1366" width="225" height="71" frameX="0" frameY="-3" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00001" x="780" y="1260" width="225" height="71" frameX="0" frameY="-4" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00002" x="0" y="1380" width="225" height="71" frameX="0" frameY="-4" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00003" x="780" y="1152" width="225" height="73" frameX="0" frameY="-2" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00004" x="520" y="936" width="225" height="75"/>
+    <SubTexture name="meteor_short_00005" x="260" y="1364" width="225" height="71" frameX="0" frameY="-3" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00006" x="0" y="1166" width="225" height="73" frameX="0" frameY="-1" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00007" x="0" y="948" width="225" height="75"/>
+    <SubTexture name="meteor_short_00008" x="260" y="932" width="225" height="75"/>
+    <SubTexture name="meteor_short_00009" x="260" y="1150" width="225" height="73" frameX="0" frameY="-1" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00010" x="520" y="1046" width="225" height="73" frameX="0" frameY="-1" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00011" x="578" y="826" width="225" height="75"/>
+    <SubTexture name="meteor_short_00012" x="520" y="1260" width="225" height="71" frameX="0" frameY="-3" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00013" x="0" y="1274" width="225" height="71" frameX="0" frameY="-4" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00014" x="260" y="1258" width="225" height="71" frameX="0" frameY="-4" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00015" x="780" y="1044" width="225" height="73" frameX="0" frameY="-2" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00016" x="0" y="838" width="225" height="75"/>
+    <SubTexture name="meteor_short_00017" x="520" y="1154" width="225" height="71" frameX="0" frameY="-3" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00018" x="780" y="936" width="225" height="73" frameX="0" frameY="-1" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00019" x="779" y="716" width="225" height="75"/>
+    <SubTexture name="meteor_short_00020" x="779" y="606" width="225" height="75"/>
+    <SubTexture name="meteor_short_00021" x="0" y="1058" width="225" height="73" frameX="0" frameY="-1" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00022" x="260" y="1042" width="225" height="73" frameX="0" frameY="-1" frameWidth="225" frameHeight="75"/>
+    <SubTexture name="meteor_short_00023" x="779" y="496" width="225" height="75"/>
+    <SubTexture name="noise01" x="488" y="235" width="256" height="256"/>
+    <SubTexture name="panel01" x="488" y="0" width="334" height="200"/>
+    <SubTexture name="toolbarv_blue01" x="958" y="95" width="64" height="98"/>
+    <SubTexture name="tooltip_small" x="857" y="0" width="132" height="60"/>
+</TextureAtlas>

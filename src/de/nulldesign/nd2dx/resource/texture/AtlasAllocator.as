@@ -8,6 +8,7 @@ package de.nulldesign.nd2dx.resource.texture
 	import de.nulldesign.nd2dx.resource.ResourceBase;
 	import de.nulldesign.nd2dx.resource.texture.parser.AtlasParserSparrow;
 	import de.nulldesign.nd2dx.utils.TextureUtil;
+	import flash.display3D.Context3D;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -21,9 +22,9 @@ package de.nulldesign.nd2dx.resource.texture
 		public var xml:XML;
 		public var parserClass:Class;
 		
-		public function AtlasAllocator(xml:XML, texture:Object, parserClass:Class = null, freeLocalResourceAfterAllocated:Boolean = false) 
+		public function AtlasAllocator(xml:XML, texture:Object, parserClass:Class = null, freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
+			super(freeLocalResourceAfterRemoteAllocation);
 			
 			this.xml = xml;
 			this.parserClass = parserClass;
@@ -32,6 +33,28 @@ package de.nulldesign.nd2dx.resource.texture
 		
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
+			if ( atlas.isAllocating ) return;
+			
+			if ( atlas.isLocallyAllocated && !forceAllocation )
+			{
+				// try to allocate it remotely
+				allocateRemoteResource(null);
+				
+				return;
+			}
+			
+			// try to allocate it remotely
+			allocateRemoteResource(null);
+			
+			atlas.isLocallyAllocated = true;
+			
+			
+		}
+		
+		override public function allocateRemoteResource(context:Context3D, forceAllocation:Boolean = false):void 
+		{
+			if ( atlas.isRemotelyAllocated && !forceAllocation ) return;
+			
 			if ( !texture && textureObject )
 			{
 				if ( textureObject is Texture2D )
@@ -50,11 +73,10 @@ package de.nulldesign.nd2dx.resource.texture
 				var parser:AtlasParserBase = new parserClass(xml);
 				TextureUtil.transformTexture2DIntoAtlas(texture, parser);
 				atlas.texture = texture;
-				atlas.isLocallyAllocated = true;
-				atlas.onLocallyAllocated.dispatch();
+				atlas.isRemotelyAllocated = true;
+				
+				if ( atlas.isLocallyAllocated && freeLocalResourceAfterRemoteAllocation ) freeLocalResource();
 			}
-			
-			if ( atlas.isLocallyAllocated && freeLocalResourceAfterAllocated ) freeLocalResource();
 		}
 		
 		override public function freeLocalResource():void 

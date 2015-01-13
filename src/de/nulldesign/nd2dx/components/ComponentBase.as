@@ -6,7 +6,7 @@ package de.nulldesign.nd2dx.components
 	import de.nulldesign.nd2dx.display.Scene2D;
 	import de.nulldesign.nd2dx.display.World2D;
 	import de.nulldesign.nd2dx.renderers.RendererBase;
-	import de.nulldesign.nd2dx.signals.SignalDispatcher;
+	import com.rabbitframework.signals.SignalDispatcher;
 	import de.nulldesign.nd2dx.utils.IIdentifiable;
 	import flash.display.Stage;
 	/**
@@ -19,6 +19,9 @@ package de.nulldesign.nd2dx.components
 		public var callStepInEditor:Boolean = false;
 		
 		public var _id:String = "";
+		
+		[WGM (position = -2000)]
+		public var name:String = "";
 		
 		public var stage:Stage = null;
 		public var camera:Camera2D = null;
@@ -111,6 +114,11 @@ package de.nulldesign.nd2dx.components
 		public function handleDeviceLoss():void
 		{
 			// called when device was lost
+		}
+		
+		public function hitTest(x:Number, y:Number):Boolean
+		{
+			return false;
 		}
 		
 		/* INTERFACE com.rabbitframework.utils.IPoolable */

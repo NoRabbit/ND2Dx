@@ -12,6 +12,11 @@ package com.rabbitframework.ui.divider
 		
 		public function DividerLine() 
 		{
+			
+		}
+		
+		override public function init():void 
+		{
 			minUIHeight = 8.0;
 		}
 		

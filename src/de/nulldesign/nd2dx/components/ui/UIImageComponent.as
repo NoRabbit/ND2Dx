@@ -36,9 +36,6 @@ package de.nulldesign.nd2dx.components.ui
 		private var _hAlign:uint = UIUtils.ALIGN_HORIZONTAL_CENTER;
 		private var _vAlign:uint = UIUtils.ALIGN_VERTICAL_CENTER;
 		
-		public var blendModeSrc:String = Context3DBlendFactor.ONE;
-		public var blendModeDst:String = Context3DBlendFactor.ONE_MINUS_SOURCE_ALPHA;
-		
 		public var uvOffsetX:Number = 0.0;
 		public var uvOffsetY:Number = 0.0;
 		public var uvScaleX:Number = 1.0;
@@ -234,11 +231,11 @@ package de.nulldesign.nd2dx.components.ui
 		{
 			if ( _texture == value ) return;
 			
-			if( _texture ) _texture.onSlicesChanged.remove(_texture_onSlicesChanged);
+			//if( _texture ) _texture.onSlicesChanged.remove(updateSlices);
 			
 			_texture = value;
 			
-			if ( _texture ) _texture.onSlicesChanged.add(_texture_onSlicesChanged);
+			//if ( _texture ) _texture.onSlicesChanged.add(updateSlices);
 			
 			updateSlices();
 		}
@@ -265,11 +262,6 @@ package de.nulldesign.nd2dx.components.ui
 			if ( _vAlign == value ) return;
 			_vAlign = value;
 			updateUISize();
-		}
-		
-		private function _texture_onSlicesChanged():void 
-		{
-			updateSlices();
 		}
 		
 		public function updateSlices():void
@@ -335,7 +327,7 @@ package de.nulldesign.nd2dx.components.ui
 			if ( !slicedObject ) slicedObject = new SlicedObject();
 			
 			slicedObject.texture = texture;
-			slicedObject.name = TextureUtil.getSliceType(texture.resourceId);
+			slicedObject.name = TextureUtil.getSliceType(texture.id);
 			
 			return slicedObject;
 		}

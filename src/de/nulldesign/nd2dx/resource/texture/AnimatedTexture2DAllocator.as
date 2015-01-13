@@ -14,9 +14,9 @@ package de.nulldesign.nd2dx.resource.texture
 		
 		public var aFrameNames:Array;
 		
-		public function AnimatedTexture2DAllocator(data:Object = null, freeLocalResourceAfterAllocated:Boolean = false) 
+		public function AnimatedTexture2DAllocator(data:Object = null, freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
+			super(freeLocalResourceAfterRemoteAllocation);
 			
 			if ( data is Array )
 			{
@@ -30,18 +30,16 @@ package de.nulldesign.nd2dx.resource.texture
 		
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
-			//trace("allocateLocalResource", aFrameNames);
+			if ( animatedTexture.isAllocating ) return;
+			if ( animatedTexture.isLocallyAllocated && !forceAllocation ) return;
 			
 			if ( aFrameNames )
 			{
 				TextureUtil.generateAnimatedTexture2DDataFromFrameNames(animatedTexture, aFrameNames);
 				
 				animatedTexture.isLocallyAllocated = true;
-				animatedTexture.onLocallyAllocated.dispatch();
 				
-				//trace("ALLOCATED");
-				
-				if ( animatedTexture.isLocallyAllocated && freeLocalResourceAfterAllocated ) freeLocalResource();
+				if ( animatedTexture.isLocallyAllocated && freeLocalResourceAfterRemoteAllocation ) freeLocalResource();
 			}
 		}
 		

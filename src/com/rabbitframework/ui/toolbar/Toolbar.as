@@ -1,12 +1,12 @@
 package com.rabbitframework.ui.toolbar 
 {
-	import com.rabbitframework.ui.groups.Group;
+	import com.rabbitframework.ui.UIContainer;
 	import flash.display.Sprite;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
-	public class Toolbar extends Group
+	public class Toolbar extends UIContainer
 	{
 		public var bg:Sprite;
 		

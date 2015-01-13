@@ -1,53 +1,43 @@
 package com.rabbitframework.ui.frame 
 {
-	import com.rabbitframework.ui.groups.Group;
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.icon.Icon;
 	import com.rabbitframework.ui.label.Label;
+	import com.rabbitframework.ui.layout.UIHorizontalLayout;
+	import com.rabbitframework.ui.layout.UIVerticalLayout;
 	import com.rabbitframework.ui.styles.UIStyles;
 	import com.rabbitframework.ui.UIBase;
-	import com.rabbitframework.ui.UIContainerBase;
+	import com.rabbitframework.ui.UIContainer;
 	import com.rabbitframework.utils.DisplayObjectUtils;
 	import flash.display.Sprite;
 	import flash.events.MouseEvent;
 	import flash.geom.Matrix;
 	import flash.text.TextField;
-	import org.osflash.signals.Signal;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
-	public class Frame extends Group
+	public class Frame extends UIContainer
 	{
-		public var mainGroup:Group = new Group();
+		public var toolbar:UIContainer = new UIContainer();
 		public var arrow:Icon = new Icon();
 		public var label:Label = new Label();
 		
 		protected var _isOpen:Boolean = true;
 		
-		public var onOpenClose:Signal = new Signal(Boolean);
-		public var vItemsToKeep:Vector.<UIBase> = new Vector.<UIBase>();
+		public var onOpenClose:Signal = new Signal();
+		
+		public var vItemsInFrame:Vector.<UIBase> = new Vector.<UIBase>();
 		
 		public function Frame(dataSource:Object = null) 
 		{
-			vItemsToKeep.push(arrow);
-			vItemsToKeep.push(label);
-			
-			addChild(mainGroup);
-			
-			mainGroup.isHorizontal = true;
-			mainGroup.spaceSize = 4.0;
-			
+			toolbar.verticalAlign = UIBase.VERTICAL_ALIGN_MIDDLE;
+			arrow.mouseEnabled = arrow.buttonMode = arrow.useHandCursor = true;
 			arrow.dataSource = UIStyles.getBitmapDataForClassName("bullet_toggle_minus.png");
 			arrow.setSize(16, 16);
-			label.setSize("100%");
-			
-			mainGroup.addItem(arrow);
-			mainGroup.addItem(label);
+			label.setSize("100%", 16);
 			
 			this.dataSource = dataSource;
-			
-			arrow.mouseEnabled = arrow.buttonMode = arrow.useHandCursor = true;
-			_paddingTop = 22.0;
 		}
 		
 		override public function init():void 
@@ -55,6 +45,16 @@ package com.rabbitframework.ui.frame
 			super.init();
 			
 			eManager.add(arrow, MouseEvent.CLICK, arrow_clickHandler, eGroup);
+			
+			_layout = UIVerticalLayout.reference;
+			_itemSpace = 4.0;
+			_extendUIHeightToTotalItemsHeight = true;
+			
+			toolbar.layout = UIHorizontalLayout.reference;
+			toolbar.addItem(arrow);
+			toolbar.addItem(label);
+			toolbar.setSize("100%", 16);
+			addItem(toolbar);
 		}
 		
 		private function arrow_clickHandler(e:MouseEvent):void 
@@ -71,26 +71,41 @@ package com.rabbitframework.ui.frame
 		
 		override public function draw():void 
 		{
-			mainGroup.setSize(uiWidth, 16, true);
-			
 			if ( _isOpen )
 			{
-				_hideChildren = false;
 				arrow.dataSource = UIStyles.getBitmapDataForClassName("bullet_toggle_minus.png");
-				//arrow.bitmap.transform.matrix = new Matrix();
-				//DisplayObjectUtils.rotateAroundPoint(arrow.bitmap, 8.0, 8.0, 90.0);
+				addItemsInFrame();
 			}
 			else
 			{
-				_hideChildren = true;
 				arrow.dataSource = UIStyles.getBitmapDataForClassName("bullet_toggle_plus.png");
-				//arrow.bitmap.transform.matrix = new Matrix();
-				//DisplayObjectUtils.rotateAroundPoint(arrow.bitmap, 8.0, 8.0, 0.0);
-				
+				removeItemsInFrame();
 				uiHeight = 16.0;
 			}
 			
 			super.draw();
+		}
+		
+		private function removeItemsInFrame():void
+		{
+			while (numItems > 1)
+			{
+				vItemsInFrame.push(getItemAt(1));
+				removeItemAt(1, false);
+			}
+		}
+		
+		private function addItemsInFrame():void
+		{
+			var i:int = 0;
+			var n:int = vItemsInFrame.length;
+			
+			for (; i < n; i++) 
+			{
+				addItem(vItemsInFrame[i], false);
+			}
+			
+			if ( vItemsInFrame.length ) vItemsInFrame.splice(0, vItemsInFrame.length);
 		}
 		
 		override public function get dataSource():Object 
@@ -114,10 +129,10 @@ package com.rabbitframework.ui.frame
 			if ( _isOpen == value ) return;
 			
 			_isOpen = value;
-			onOpenClose.dispatch(value);
+			onOpenClose.dispatchData(value);
 			draw();
 			
-			var p:UIContainerBase = uiParent;
+			var p:UIContainer = uiParent;
 			
 			while ( p )
 			{
@@ -141,15 +156,22 @@ package com.rabbitframework.ui.frame
 		
 		override public function disposeForPool():void 
 		{
+			toolbar.removeAllItems(false);
+			removeItem(toolbar, false);
+			
 			super.disposeForPool();
+			
 			_isOpen = true;
 			label.dataSource = "";
 			
-			mainGroup.removeAllItems(false, vItemsToKeep);
+			if ( vItemsInFrame.length ) vItemsInFrame.splice(0, vItemsInFrame.length);
+			
+			trace(this, "disposeForPool", vItems, toolbar.vItems);
 		}
 		
 		override public function dispose():void 
 		{
+			vItemsInFrame = null;
 			super.dispose();
 		}
 	}

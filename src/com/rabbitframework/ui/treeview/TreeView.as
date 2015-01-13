@@ -2,6 +2,7 @@ package com.rabbitframework.ui.treeview
 {
 	import com.rabbitframework.managers.pool.Pool;
 	import com.rabbitframework.managers.pool.PoolManager;
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.dataprovider.DataProviderBase;
 	import com.rabbitframework.ui.dataprovider.DataProviderManager;
 	import com.rabbitframework.ui.scrollbar.VScrollBar;
@@ -13,8 +14,7 @@ package com.rabbitframework.ui.treeview
 	import flash.events.Event;
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
-	import org.osflash.signals.Signal;
-	import wgmeditor.managers.draganddrop.DragAndDropObject;
+	import com.rabbitframework.managers.draganddrop.DragAndDropObject;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -27,9 +27,10 @@ package com.rabbitframework.ui.treeview
 		public static const DRAG_TYPE_IN_EMPTY:uint = 4;
 		
 		public var ITEM_SIZE:Number = 20.0;
-		public var INDENT_SIZE:Number = 20.0;
+		public var INDENT_SIZE:Number = 16.0;
 		
-		protected var itemPool:Pool = PoolManager.getInstance().getPoolForClass(TreeViewItem, true, 10);
+		public var _itemClass:Class;
+		protected var itemPool:Pool;
 		
 		public var bg:Sprite;
 		public var vScrollBar:VScrollBar;
@@ -39,7 +40,7 @@ package com.rabbitframework.ui.treeview
 		public var dragIn:Sprite;
 		public var dragInBetween:Sprite;
 		
-		private var vItems:Vector.<TreeViewItem> = new Vector.<TreeViewItem>();
+		private var vItems:Vector.<TreeViewItemBase> = new Vector.<TreeViewItemBase>();
 		
 		private var drawStartX:Number = 0.0;
 		private var drawStartY:Number = 0.0;
@@ -78,7 +79,7 @@ package com.rabbitframework.ui.treeview
 		public var dragType:uint = 0;
 		public var dragOnDataSource:Object = null;
 		
-		public var onSelect:Signal = new Signal(Object);
+		public var onSelect:Signal = new Signal();
 		
 		public function TreeView() 
 		{
@@ -114,6 +115,8 @@ package com.rabbitframework.ui.treeview
 			
 			vScrollBar.visible = vScrollBar.enabled = false;
 			vScrollBar.onChange.add(vScrollBar_onChangeHandler);
+			
+			itemClass = TreeViewItemDefault;
 			
 			eManager.add(this, MouseEvent.MOUSE_WHEEL, mouseWheelHandler, eGroup);
 		}
@@ -183,7 +186,7 @@ package com.rabbitframework.ui.treeview
 			
 			clearItemsForDrawing();
 			
-			if ( !_dataSource )
+			if ( !_dataSource || !_itemClass || !itemPool )
 			{
 				vScrollBar.enabled = false;
 				return;
@@ -252,7 +255,7 @@ package com.rabbitframework.ui.treeview
 			
 			if ( currentDrawY + ITEM_SIZE >= 0.0 && currentDrawY < itemsContainerMask.height )
 			{
-				var item:TreeViewItem = itemPool.getObject() as TreeViewItem;
+				var item:TreeViewItemBase = itemPool.getObject() as TreeViewItemBase;
 				item.treeView = this;
 				item.x = currentDrawX;
 				item.y = currentDrawY;
@@ -292,7 +295,7 @@ package com.rabbitframework.ui.treeview
 					
 					for (; i < n; i++) 
 					{
-						drawDataProvider(dataProvider.getItemAt(dataSource, i), indentSize + INDENT_SIZE, i, dataSource);
+						drawDataProvider(dataProvider.getItemAt(dataSource, i), indentSize + INDENT_SIZE + 2.0, i, dataSource);
 					}
 				}
 			}
@@ -373,8 +376,8 @@ package com.rabbitframework.ui.treeview
 			// get item we are currently over
 			var i:int = 0;
 			var n:int = vItems.length;
-			var item:TreeViewItem;
-			var overItem:TreeViewItem;
+			var item:TreeViewItemBase;
+			var overItem:TreeViewItemBase;
 			
 			dragIn.visible = false;
 			dragInBetween.visible = false;
@@ -528,6 +531,8 @@ package com.rabbitframework.ui.treeview
 						dataProviderManager.copyDataSourceTo(dragAndDropObject.object, dragOnDataSource, dragOnDataSourceProvider.getNumChildren(dragOnDataSource));
 					}
 				}
+				
+				onDragAndDrop.dispatchData(dragAndDropObject, dragOnDataSource);
 			}
 			
 			if ( preSelectedDataSource )
@@ -687,11 +692,33 @@ package com.rabbitframework.ui.treeview
 			draw();
 		}
 		
+		public function get itemClass():Class 
+		{
+			return _itemClass;
+		}
+		
+		public function set itemClass(value:Class):void 
+		{
+			_itemClass = value;
+			
+			if ( _itemClass )
+			{
+				itemPool = PoolManager.getInstance().getPoolForClass(_itemClass, true, 10);
+			}
+			else
+			{
+				itemPool = null;
+			}
+			
+			drawItems();
+		}
+		
 		override public function disposeForPool():void 
 		{
 			super.disposeForPool();
 			vScrollBar.onChange.removeAll();
 			onSelect.removeAll();
+			onDragAndDrop.removeAll();
 			clearItemsForDrawing();
 			dataSource = null;
 			selectedDataSource = null;
@@ -703,6 +730,7 @@ package com.rabbitframework.ui.treeview
 		{
 			super.dispose();
 			onSelect.removeAll();
+			onDragAndDrop.removeAll();
 			clearItemsForDrawing();
 			dataSource = null;
 			selectedDataSource = null;

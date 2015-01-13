@@ -11,12 +11,16 @@ package com.rabbitframework.ui.label
 	public class Label extends UIBase
 	{
 		public var txt:TextField;
+		private var _autoSize:Boolean = false;
 		
 		public function Label(value:String = "") 
 		{
 			dataSource = value;
-			
-			minUIHeight = 16.0;
+		}
+		
+		override public function init():void 
+		{
+			minUIHeight = 20.0;
 		}
 		
 		override public function draw():void 
@@ -26,7 +30,16 @@ package com.rabbitframework.ui.label
 			txt.autoSize = (tf.align ? tf.align : TextFormatAlign.LEFT);
 			txt.x = 0.0;
 			//txt.y = 0.0;
-			txt.width = uiWidth;
+			
+			if ( _autoSize )
+			{
+				uiWidth = txt.width;
+			}
+			else
+			{
+				txt.width = uiWidth;
+			}
+			
 			//txt.height = uiHeight;
 			txt.y = Math.round((uiHeight - txt.height) * 0.5) + 1;
 		}
@@ -40,6 +53,17 @@ package com.rabbitframework.ui.label
 		{
 			super.dataSource = value;
 			txt.text = dataProviderManager.getDataSourceLabel(_dataSource);
+		}
+		
+		public function get autoSize():Boolean 
+		{
+			return _autoSize;
+		}
+		
+		public function set autoSize(value:Boolean):void 
+		{
+			_autoSize = value;
+			draw();
 		}
 	}
 

@@ -9,8 +9,7 @@ package de.nulldesign.nd2dx.utils
 	{
 		public static function generateMeshData(mesh:Mesh2D, stepsX:uint = 1, stepsY:uint = 1, width:Number = 1.0, height:Number = 1.0):Mesh2D
 		{
-			//mesh.stepsX = stepsX;
-			//mesh.stepsY = stepsY;
+			if( mesh.allocator ) mesh.allocator.freeLocalResource();
 			
 			var vertexList:Vector.<Vertex3D> = mesh.vertexList;
 			var indexList:Vector.<uint> = mesh.indexList;
@@ -57,8 +56,6 @@ package de.nulldesign.nd2dx.utils
 					indexList.push(currentX + stepsX + 1);
 				}
 			}
-			
-			mesh.needUploadVertexBuffer = true;
 			
 			return mesh;
 		}

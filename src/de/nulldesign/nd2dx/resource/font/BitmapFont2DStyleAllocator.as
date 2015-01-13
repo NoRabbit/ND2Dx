@@ -5,6 +5,7 @@ package de.nulldesign.nd2dx.resource.font
 	import de.nulldesign.nd2dx.resource.ResourceBase;
 	import de.nulldesign.nd2dx.resource.texture.Texture2D;
 	import de.nulldesign.nd2dx.utils.TextureUtil;
+	import flash.display3D.Context3D;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -17,9 +18,9 @@ package de.nulldesign.nd2dx.resource.font
 		public var texture:Texture2D;
 		public var xml:XML;
 		
-		public function BitmapFont2DStyleAllocator(xml:XML, texture:Object, freeLocalResourceAfterAllocated:Boolean = false) 
+		public function BitmapFont2DStyleAllocator(xml:XML, texture:Object, freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
+			super(freeLocalResourceAfterRemoteAllocation);
 			
 			this.xml = xml;
 			this.textureObject = texture;
@@ -27,6 +28,26 @@ package de.nulldesign.nd2dx.resource.font
 		
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
+			if ( bitmapFont2DStyle.isAllocating ) return;
+			
+			if ( bitmapFont2DStyle.isLocallyAllocated && !forceAllocation )
+			{
+				// try to allocate it remotely
+				allocateRemoteResource(null);
+				
+				return;
+			}
+			
+			// try to allocate it remotely
+			allocateRemoteResource(null);
+			
+			bitmapFont2DStyle.isLocallyAllocated = true;
+		}
+		
+		override public function allocateRemoteResource(context:Context3D, forceAllocation:Boolean = false):void 
+		{
+			if ( bitmapFont2DStyle.isRemotelyAllocated && !forceAllocation ) return;
+			
 			if ( !texture && textureObject )
 			{
 				if ( textureObject is Texture2D )
@@ -44,11 +65,10 @@ package de.nulldesign.nd2dx.resource.font
 				bitmapFont2DStyle.texture = texture;
 				bitmapFont2DStyle.scaleFactor = texture.scaleFactor;
 				parseXML(xml);
-				bitmapFont2DStyle.isLocallyAllocated = true;
-				bitmapFont2DStyle.onLocallyAllocated.dispatch();
+				bitmapFont2DStyle.isRemotelyAllocated = true;
 			}
 			
-			if ( bitmapFont2DStyle.isLocallyAllocated && freeLocalResourceAfterAllocated ) freeLocalResource();
+			if ( bitmapFont2DStyle.isLocallyAllocated && freeLocalResourceAfterRemoteAllocation ) freeLocalResource();
 		}
 		
 		public function parseXML(xml:XML):void

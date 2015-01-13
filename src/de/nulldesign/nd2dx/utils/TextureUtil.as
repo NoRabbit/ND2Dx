@@ -25,6 +25,8 @@ package de.nulldesign.nd2dx.utils
 		public static const SLICE_TYPE_3_VERTICAL:int = 2;
 		public static const SLICE_TYPE_3_HORIZONTAL:int = 3;
 		public static const SLICE_TYPE_9:int = 4;
+		public static const SLICE_TYPE_5_VERTICAL:int = 5;
+		public static const SLICE_TYPE_5_HORIZONTAL:int = 6;
 		
 		/**
 		 * Will return a point that contains the width and height of the smallest
@@ -303,21 +305,14 @@ package de.nulldesign.nd2dx.utils
 			
 			subTexture2D.texture = parentTexture2D.texture;
 			subTexture2D.parent = parentTexture2D;
-			subTexture2D.mainParent = parentTexture2D.mainParent;
+			subTexture2D.base = parentTexture2D.base;
 			
 			subTexture2D.frameName = frameName;
 			
 			subTexture2D.scaleFactor = parentTexture2D.scaleFactor;
 			
 			subTexture2D.isLocallyAllocated = parentTexture2D.isLocallyAllocated;
-			subTexture2D.isRemotellyAllocated = parentTexture2D.isRemotellyAllocated;
-			
-			subTexture2D.onLocalAllocationError = parentTexture2D.onLocalAllocationError;
-			subTexture2D.onLocallyAllocated = parentTexture2D.onLocallyAllocated;
-			subTexture2D.onLocallyDeallocated = parentTexture2D.onLocallyDeallocated;
-			subTexture2D.onRemoteAllocationError = parentTexture2D.onRemoteAllocationError;
-			subTexture2D.onRemotelyAllocated = parentTexture2D.onRemotelyAllocated;
-			subTexture2D.onRemotelyDeallocated = parentTexture2D.onRemotelyDeallocated;
+			subTexture2D.isRemotelyAllocated = parentTexture2D.isRemotelyAllocated;
 			
 			parentTexture2D.vSubTextures.push(subTexture2D);
 			parentTexture2D.frameNameToSubTexture2D[subTexture2D.frameName] = subTexture2D;
@@ -339,7 +334,7 @@ package de.nulldesign.nd2dx.utils
 			return subTexture2D;
 		}
 		
-		public static function getTexture2DResourceIdArrayFromFrameName(texture2D:Texture2D, frameName:String):Array
+		public static function getTexture2DIdArrayFromFrameName(texture2D:Texture2D, frameName:String):Array
 		{
 			var aFrames:Array = new Array();
 			
@@ -361,7 +356,7 @@ package de.nulldesign.nd2dx.utils
 			
 			for (; i < n; i++) 
 			{
-				aFrames.push(aSortedFrames[i].resourceId);
+				aFrames.push(aSortedFrames[i].id);
 			}
 			
 			return aFrames;
@@ -414,22 +409,22 @@ package de.nulldesign.nd2dx.utils
 			
 			var i:int = 0;
 			var n:int = texture.vSubTextures.length;
-			var resourceId:String;
+			var id:String;
 			var index:int;
 			
 			for (; i < n; i++) 
 			{
-				resourceId = texture.vSubTextures[i].resourceId;
+				id = texture.vSubTextures[i].id;
 				
-				index = resourceId.indexOf("@slice");
+				index = id.indexOf("@slice");
 				
 				if ( index >= 0 )
 				{
-					switch ( resourceId.substr(index + 6, 1) ) 
+					switch ( id.substr(index + 6, 1) ) 
 					{
 						case "3":
 							{
-								switch ( resourceId.substr(index + 7, 1) ) 
+								switch ( id.substr(index + 7, 1) ) 
 								{
 									case "h":
 										{
@@ -463,18 +458,18 @@ package de.nulldesign.nd2dx.utils
 		{
 			var i:int = 0;
 			var n:int = texture.vSubTextures.length;
-			var resourceId:String;
+			var id:String;
 			var index:int;
 			
 			for (; i < n; i++) 
 			{
-				resourceId = texture.vSubTextures[i].resourceId;
+				id = texture.vSubTextures[i].id;
 				
-				index = resourceId.indexOf("@slice");
+				index = id.indexOf("@slice");
 				
 				if ( index >= 0 )
 				{
-					if ( resourceId.substr(index + 6, slice.length) == slice ) return texture.vSubTextures[i];
+					if ( id.substr(index + 6, slice.length) == slice ) return texture.vSubTextures[i];
 				}
 			}
 			

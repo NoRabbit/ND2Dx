@@ -3,7 +3,6 @@ package showdown.scenes.common
 	import de.nulldesign.nd2dx.components.AnimatedTextureComponent;
 	import de.nulldesign.nd2dx.components.renderers.TexturedMeshRendererComponent;
 	import de.nulldesign.nd2dx.display.Node2D;
-	import de.nulldesign.nd2dx.materials.Texture2DMaterial;
 	import de.nulldesign.nd2dx.utils.TextureUtil;
 	import showdown.assets.Assets;
 	/**

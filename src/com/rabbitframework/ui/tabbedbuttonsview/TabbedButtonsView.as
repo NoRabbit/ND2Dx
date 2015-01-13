@@ -1,21 +1,19 @@
 package com.rabbitframework.ui.tabbedbuttonsview 
 {
 	import com.rabbitframework.managers.pool.PoolManager;
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.button.Button;
 	import com.rabbitframework.ui.dataprovider.DataProviderBase;
 	import com.rabbitframework.ui.UIBase;
-	import org.osflash.signals.Signal;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
 	public class TabbedButtonsView extends UIBase
 	{
-		protected var poolManager:PoolManager = PoolManager.getInstance();
-		
 		private var vItems:Vector.<UIBase> = new Vector.<UIBase>();
 		
-		public var onSelect:Signal = new Signal(Object);
+		public var onSelect:Signal = new Signal();
 		
 		private var _selectedDataSource:Object;
 		
@@ -149,7 +147,7 @@ package com.rabbitframework.ui.tabbedbuttonsview
 		{
 			_selectedDataSource = value;
 			draw();
-			onSelect.dispatch(_selectedDataSource);
+			onSelect.dispatchData(_selectedDataSource);
 		}
 		
 		override public function disposeForPool():void 

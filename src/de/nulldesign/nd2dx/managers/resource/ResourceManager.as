@@ -3,15 +3,13 @@ package de.nulldesign.nd2dx.managers.resource
 	import com.rabbitframework.managers.assets.AssetGroup;
 	import com.rabbitframework.managers.assets.AssetLoader;
 	import com.rabbitframework.managers.events.EventsManager;
-	import com.rabbitframework.signals.RabbitSignal;
 	import com.rabbitframework.utils.StringUtils;
 	import de.nulldesign.nd2dx.components.renderers.ParticleSystem2DRendererComponent;
-	import de.nulldesign.nd2dx.materials.ParticleSystem2DMaterial;
-	import de.nulldesign.nd2dx.materials.Texture2DMaterial;
 	import de.nulldesign.nd2dx.renderers.TexturedMeshCloudRenderer;
 	import de.nulldesign.nd2dx.resource.font.BitmapFont2DStyle;
 	import de.nulldesign.nd2dx.resource.mesh.Mesh2D;
 	import de.nulldesign.nd2dx.resource.mesh.Mesh2DAllocator;
+	import de.nulldesign.nd2dx.resource.mesh.Mesh2DStepsAllocator;
 	import de.nulldesign.nd2dx.resource.ResourceAllocatorBase;
 	import de.nulldesign.nd2dx.resource.ResourceBase;
 	import de.nulldesign.nd2dx.resource.shader.Shader2D;
@@ -20,7 +18,7 @@ package de.nulldesign.nd2dx.managers.resource
 	import de.nulldesign.nd2dx.resource.texture.AnimatedTexture2D;
 	import de.nulldesign.nd2dx.resource.texture.Atlas;
 	import de.nulldesign.nd2dx.resource.texture.AtlasFileAllocator;
-	import de.nulldesign.nd2dx.resource.texture.AtlasSlicedNode2D;
+	import de.nulldesign.nd2dx.resource.texture.SlicedTexture2D;
 	import de.nulldesign.nd2dx.resource.texture.Texture2D;
 	import de.nulldesign.nd2dx.resource.texture.Texture2DBitmapFileAllocator;
 	import flash.utils.Dictionary;
@@ -42,9 +40,6 @@ package de.nulldesign.nd2dx.managers.resource
 		public var dResourcesForDescriptoName:Dictionary = new Dictionary();
 		
 		public var dIdPrefixForResourceDescriptor:Dictionary = new Dictionary();
-		
-		public var onResourceCreated:RabbitSignal = new RabbitSignal();
-		public var onChange:RabbitSignal = new RabbitSignal();
 		
 		// unique ids
 		private var dIds:Dictionary = new Dictionary();
@@ -68,15 +63,14 @@ package de.nulldesign.nd2dx.managers.resource
 				instance.createAndAddResourceDescriptor(ResourceDescriptor.BITMAP_TEXTURE, Texture2D, ["png", "jpg", "jpeg", "gif"], "tex_");
 				instance.createAndAddResourceDescriptor(ResourceDescriptor.MESH, Mesh2D, ["mesh2d"], "mesh_");
 				instance.createAndAddResourceDescriptor(ResourceDescriptor.TEXTURE_ATLAS, Atlas, ["xml", "plist"], "texatlas_");
-				instance.createAndAddResourceDescriptor(ResourceDescriptor.TEXTURE_ATLAS_SLICED_NODE2D, AtlasSlicedNode2D, ["xml", "plist"], "texatlasslicednode2d_");
+				instance.createAndAddResourceDescriptor(ResourceDescriptor.SLICED_TEXTURE, SlicedTexture2D, ["xml", "plist"], "slicedtex_");
 				instance.createAndAddResourceDescriptor(ResourceDescriptor.BITMAP_FONT_STYLE, BitmapFont2DStyle, ["xml", "fnt"], "bitmapfont2dstyle_");
 				instance.createAndAddResourceDescriptor(ResourceDescriptor.ANIMATED_TEXTURE, AnimatedTexture2D, ["xml"], "animtex_");
 				instance.createAndAddResourceDescriptor(ResourceDescriptor.SHADER, Shader2D, ["xml"], "shader_");
 				
-				instance.createResource(ResourceDescriptor.MESH, new Mesh2DAllocator(null, 1, 1, 1, 1), "mesh_quad2d", "Quad Mesh 2D", true, null, true);
+				instance.createResource(ResourceDescriptor.MESH, new Mesh2DStepsAllocator(1, 1, 1, 1), "mesh_quad2d", "Quad Mesh 2D", true, null, true);
 				instance.createResource(ResourceDescriptor.SHADER, new Shader2DAllocator(null, TexturedMeshCloudRenderer.VERTEX_SHADER, TexturedMeshCloudRenderer.FRAGMENT_SHADER), "shader_TexturedMeshCloudRenderer", "TexturedMeshCloudRenderer Shader", true, null, true);
 				instance.createResource(ResourceDescriptor.SHADER, new Shader2DAllocator(null, ParticleSystem2DRendererComponent.VERTEX_SHADER, ParticleSystem2DRendererComponent.FRAGMENT_SHADER), "shader_particlesystem2drenderer", "ParticleSystem2DRenderer Shader", true, null, true);
-				instance.createResource(ResourceDescriptor.SHADER, new Shader2DAllocator(null, ParticleSystem2DMaterial.VERTEX_SHADER, ParticleSystem2DMaterial.FRAGMENT_SHADER), "shader_particlesystem2dmaterial", "ParticleSystem2DMaterial Shader", true, null, true);
 			}
 			
 			return instance;
@@ -202,35 +196,35 @@ package de.nulldesign.nd2dx.managers.resource
 		
 		// RESOURCES
 		
-		public function createResource(descriptorName:String, allocator:ResourceAllocatorBase, resourceId:String = "", resourceName:String = "", allocateResourceDirectly:Boolean = true, assetGroup:AssetGroup = null, isCore:Boolean = false):ResourceBase
+		public function createResource(descriptorName:String, allocator:ResourceAllocatorBase, id:String = "", name:String = "", allocateResourceDirectly:Boolean = true, assetGroup:AssetGroup = null, isCore:Boolean = false):ResourceBase
 		{
 			var descriptor:ResourceDescriptor = getResourceDescriptorForName(descriptorName);
 			
 			if ( !descriptor ) return null;
 			
-			var resource:ResourceBase = addResource(descriptor.createResource(allocator), resourceId, resourceName, allocateResourceDirectly, assetGroup);
+			var resource:ResourceBase = addResource(descriptor.createResource(allocator), id, name, allocateResourceDirectly, assetGroup);
 			resource.isCore = isCore;
 			return resource;
 		}
 		
-		public function addResource(resource:ResourceBase, resourceId:String = "", resourceName:String = "", allocateResourceDirectly:Boolean = true, assetGroup:AssetGroup = null):ResourceBase
+		public function addResource(resource:ResourceBase, id:String = "", name:String = "", allocateResourceDirectly:Boolean = true, assetGroup:AssetGroup = null):ResourceBase
 		{
-			//trace("addResource", resource, resourceId, resourceName, allocateResourceDirectly, assetGroup);
+			//trace("addResource", resource, id, name, allocateResourceDirectly, assetGroup);
 			
 			var descriptor:ResourceDescriptor = getResourceDescriptorForResource(resource);
 			
-			if ( resourceId.length > 0 )
+			if ( id.length > 0 )
 			{
-				// TOTO: check for redundant resourceId
-				registerUniqueId(resourceId);
+				// TOTO: check for redundant id
+				registerUniqueId(id);
 			}
 			else
 			{
-				resourceId = dIdPrefixForResourceDescriptor[descriptor.name] + getUniqueId();
+				id = dIdPrefixForResourceDescriptor[descriptor.name] + getUniqueId();
 			}
 			
-			resource.resourceId = resourceId;
-			resource.resourceName = resourceName;
+			resource.id = id;
+			resource.name = name;
 			
 			vResources.push(resource);
 			
@@ -245,7 +239,7 @@ package de.nulldesign.nd2dx.managers.resource
 			return resource;
 		}
 		
-		public function getResourceById(resourceId:String):ResourceBase
+		public function getResourceById(id:String):ResourceBase
 		{
 			var i:int = 0;
 			var n:int = vResources.length;
@@ -254,7 +248,7 @@ package de.nulldesign.nd2dx.managers.resource
 			for (; i < n; i++) 
 			{
 				resource = vResources[i];
-				if ( resource.resourceId == resourceId ) return resource;
+				if ( resource.id == id ) return resource;
 			}
 			
 			return null;
@@ -281,9 +275,9 @@ package de.nulldesign.nd2dx.managers.resource
 			return dResourcesForDescriptoName[descriptorName] as Array;
 		}
 		
-		public function getTextureById(resourceId:String):Texture2D
+		public function getTextureById(id:String):Texture2D
 		{
-			var aIds:Array = resourceId.split(".");
+			var aIds:Array = id.split(".");
 			
 			var i:int = 0;
 			var n:int = aIds.length;
@@ -294,13 +288,11 @@ package de.nulldesign.nd2dx.managers.resource
 				if ( !texture )
 				{
 					texture = getResourceById(aIds[i] as String) as Texture2D;
-					
 					if ( !texture ) return null;
 				}
 				else
 				{
 					texture = texture.getSubTextureByName(aIds[i] as String);
-					
 					if ( !texture ) return null;
 				}
 			}
@@ -308,9 +300,9 @@ package de.nulldesign.nd2dx.managers.resource
 			return texture;
 		}
 		
-		public function getBitmapFont2DStyleById(resourceId:String):BitmapFont2DStyle
+		public function getBitmapFont2DStyleById(id:String):BitmapFont2DStyle
 		{
-			return getResourceById(resourceId) as BitmapFont2DStyle;
+			return getResourceById(id) as BitmapFont2DStyle;
 		}
 	}
 	

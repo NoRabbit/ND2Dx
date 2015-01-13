@@ -21,9 +21,9 @@ package de.nulldesign.nd2dx.resource.shader
 		public var fragmentProgramString:String;
 		public var defines:Array;
 		
-		public function Shader2DAllocator(propertiesString:String = null, vertexProgramString:String = null, fragmentProgramString:String = null, freeLocalResourceAfterAllocated:Boolean = false) 
+		public function Shader2DAllocator(propertiesString:String = null, vertexProgramString:String = null, fragmentProgramString:String = null, freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
+			super(freeLocalResourceAfterRemoteAllocation);
 			
 			this.propertiesString = propertiesString;
 			this.vertexProgramString = vertexProgramString;
@@ -32,6 +32,7 @@ package de.nulldesign.nd2dx.resource.shader
 		
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
+			if ( shader.isAllocating ) return;
 			if ( shader.isLocallyAllocated && !forceAllocation ) return;
 			
 			shader.propertiesString = propertiesString;
@@ -174,10 +175,10 @@ package de.nulldesign.nd2dx.resource.shader
 				//trace("fragmentAliasesString", shader.fragmentAliasesString);
 			}
 			
+			shader.isLocallyAllocated = false;
 			shader.isLocallyAllocated = true;
-			shader.onLocallyAllocated.dispatch();
 			
-			//if ( shader.isLocallyAllocated && freeLocalResourceAfterAllocated ) freeLocalResource();
+			//if ( shader.isLocallyAllocated && freeLocalResourceAfterRemoteAllocation ) freeLocalResource();
 		}
 		
 		override public function freeLocalResource():void 
@@ -199,7 +200,7 @@ package de.nulldesign.nd2dx.resource.shader
 			
 			shader.dProgramForId = null;
 			
-			shader.isRemotellyAllocated = false;
+			shader.isRemotelyAllocated = false;
 		}
 		
 		override public function get resource():ResourceBase 

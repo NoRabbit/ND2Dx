@@ -1,6 +1,7 @@
 package com.rabbitframework.ui.combobox 
 {
 	import com.rabbitframework.managers.pool.PoolManager;
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.button.ButtonContainer;
 	import com.rabbitframework.ui.dataprovider.DataProviderBase;
 	import com.rabbitframework.ui.icon.Icon;
@@ -17,7 +18,6 @@ package com.rabbitframework.ui.combobox
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
 	import flash.text.TextField;
-	import org.osflash.signals.Signal;
 	
 	/**
 	 * ...
@@ -25,25 +25,42 @@ package com.rabbitframework.ui.combobox
 	 */
 	public class ComboBox extends ButtonContainer
 	{
-		public var poolManager:PoolManager = PoolManager.getInstance();
 		public var treeView:TreeView;
 		
 		private var _isOpen:Boolean;
 		private var _selectedDataSource:Object;
 		
-		public var onSelect:Signal = new Signal(Object);
+		public var onSelect:Signal = new Signal();
+		
+		public var icon:Icon = new Icon();
+		public var label:Label = new Label();
+		public var arrow:Icon = new Icon();
 		
 		public function ComboBox() 
 		{
-			minUIWidth = 50.0;
-			minUIHeight = 20.0;
+			arrow.dataSource = BitmapDataUtils.getBitmapDataFromClassName("ArrowDown");
+			arrow.setSize(16, 16);
 		}
 		
 		override public function init():void 
 		{
 			super.init();
 			
-			drawItems();
+			minUIWidth = 50.0;
+			minUIHeight = 20.0;
+			
+			uiHeight = 20.0;
+			
+			_paddingBottom = 2.0;
+			_paddingLeft = 8.0;
+			_paddingRight = 8.0;
+			_paddingTop = 2.0;
+			_itemSpace = 4.0;
+			
+			_horizontalAlign = UIBase.HORIZONTAL_ALIGN_CENTER;
+			_verticalAlign = UIBase.VERTICAL_ALIGN_MIDDLE;
+			
+			draw();
 		}
 		
 		override protected function onMouseDownHandler(e:MouseEvent):void 
@@ -68,6 +85,10 @@ package com.rabbitframework.ui.combobox
 		
 		override public function disposeForPool():void 
 		{
+			removeItem(icon, false);
+			removeItem(label, false);
+			removeItem(arrow, false);
+			
 			super.disposeForPool();
 			
 			if ( treeView ) poolManager.releaseObject(treeView);
@@ -90,49 +111,6 @@ package com.rabbitframework.ui.combobox
 			dataSource = null;
 		}
 		
-		override public function draw():void 
-		{
-			super.draw();
-		}
-		
-		public function drawItems():void
-		{
-			while ( vItems.length > 0 )
-			{
-				poolManager.releaseObject(removeItemAt(0, false));
-			}
-			
-			if ( _selectedDataSource )
-			{
-				var dataProvider:DataProviderBase = dataProviderManager.getDataProviderForDataSource(_selectedDataSource);
-				
-				if ( dataProvider )
-				{
-					var iconBmpData:BitmapData = dataProvider.getIcon(_selectedDataSource);
-					
-					if ( iconBmpData )
-					{
-						var icon:Icon = poolManager.getObject(Icon) as Icon;
-						addItem(icon, false);
-						icon.dataSource = iconBmpData;
-						icon.setSize(16, 16);
-					}
-					
-					var label:Label = poolManager.getObject(Label) as Label;
-					addItem(label, false);
-					label.dataSource = _selectedDataSource;
-					label.setSize("100%");
-					
-					var arrow:Icon = poolManager.getObject(Icon) as Icon;
-					addItem(arrow, false);
-					arrow.dataSource = BitmapDataUtils.getBitmapDataFromClassName("ArrowDown");
-					arrow.setSize(16, 16);
-				}
-			}
-			
-			draw();
-		}
-		
 		public function get selectedDataSource():Object 
 		{
 			return _selectedDataSource;
@@ -140,11 +118,37 @@ package com.rabbitframework.ui.combobox
 		
 		public function set selectedDataSource(value:Object):void 
 		{
+			if ( _selectedDataSource == value ) return;
+			
 			_selectedDataSource = value;
 			
-			drawItems();
+			removeAllItems(false);
 			
-			onSelect.dispatch(value);
+			if ( !_selectedDataSource ) return;
+			
+			var dataProvider:DataProviderBase = dataProviderManager.getDataProviderForDataSource(_selectedDataSource);
+			
+			if ( dataProvider )
+			{
+				var iconBmpData:BitmapData = dataProvider.getIcon(_selectedDataSource);
+				
+				if ( iconBmpData )
+				{
+					addItem(icon, false);
+					icon.dataSource = iconBmpData;
+					icon.setSize(16, 16);
+				}
+				
+				addItem(label, false);
+				label.dataSource = _selectedDataSource;
+				label.setSize("100%");
+				
+				addItem(arrow, false);
+			}
+			
+			draw();
+			
+			onSelect.dispatchData(value);
 		}
 		
 		override public function get dataSource():Object 

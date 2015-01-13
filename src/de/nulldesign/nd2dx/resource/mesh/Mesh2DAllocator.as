@@ -5,6 +5,7 @@ package de.nulldesign.nd2dx.resource.mesh
 	import de.nulldesign.nd2dx.resource.ResourceBase;
 	import de.nulldesign.nd2dx.utils.MeshUtil;
 	import de.nulldesign.nd2dx.utils.Vertex3D;
+	import flash.display3D.Context3D;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -13,36 +14,87 @@ package de.nulldesign.nd2dx.resource.mesh
 	{
 		public var mesh:Mesh2D;
 		
-		public var stepsX:uint = 0;
-		public var stepsY:uint = 0;
-		public var width:Number = 0.0;
-		public var height:Number = 0.0;
+		public var mIndexBuffer:Vector.<uint> = null;
+		public var mVertexBuffer:Vector.<Number> = null;
 		
-		public function Mesh2DAllocator(data:Object = null, stepsX:uint = 0, stepsY:uint = 0, width:Number = 0.0, height:Number = 0.0, freeLocalResourceAfterAllocated:Boolean = false) 
+		public var isDataPreparedForRemoteAllocation:Boolean = false;
+		
+		public function Mesh2DAllocator(freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
-			super(freeLocalResourceAfterAllocated);
-			
-			this.stepsX = stepsX;
-			this.stepsY = stepsY;
-			this.width = width;
-			this.height = height;
+			super(freeLocalResourceAfterRemoteAllocation);
 		}
 		
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
-			MeshUtil.generateMeshData(mesh, stepsX, stepsY, width, height);
+			if ( mesh.isLocallyAllocated && !forceAllocation ) return;
+			
+			isDataPreparedForRemoteAllocation = false;
 			
 			mesh.isLocallyAllocated = true;
 			
-			if ( mesh.isLocallyAllocated && freeLocalResourceAfterAllocated ) freeLocalResource();
+			if ( mesh.isLocallyAllocated && freeLocalResourceAfterRemoteAllocation ) freeLocalResource();
 		}
 		
 		override public function freeLocalResource():void 
 		{
-			if ( mesh.mIndexBuffer && mesh.mIndexBuffer.length ) mesh.mIndexBuffer.splice(0, mesh.mIndexBuffer.length);
-			if ( mesh.mVertexBuffer && mesh.mVertexBuffer.length ) mesh.mVertexBuffer.splice(0, mesh.mVertexBuffer.length);
+			if ( mesh.vertexList && mesh.vertexList.length  ) mesh.vertexList.splice(0, mesh.vertexList.length);
+			if ( mesh.indexList && mesh.indexList.length  ) mesh.indexList.splice(0, mesh.indexList.length);
+			
+			if ( mIndexBuffer && mIndexBuffer.length  ) mIndexBuffer.splice(0, mIndexBuffer.length);
+			if ( mVertexBuffer && mVertexBuffer.length  ) mVertexBuffer.splice(0, mVertexBuffer.length);
 			
 			mesh.isLocallyAllocated = false;
+		}
+		
+		override public function allocateRemoteResource(context:Context3D, forceAllocation:Boolean = false):void 
+		{
+			if ( mesh.isRemotelyAllocated && !forceAllocation ) return;
+			
+			if ( !isDataPreparedForRemoteAllocation ) prepareDataForRemoteAllocation();
+			
+			if ( mesh.vertexBuffer ) mesh.vertexBuffer.dispose();
+			mesh.vertexBuffer = context.createVertexBuffer(mesh.numVertices, mesh.numFloatsPerVertex);
+			mesh.vertexBuffer.uploadFromVector(mVertexBuffer, 0, mesh.numVertices);
+			
+			if ( mesh.indexBuffer ) mesh.indexBuffer.dispose();
+			mesh.indexBuffer = context.createIndexBuffer(mesh.numIndices);
+			mesh.indexBuffer.uploadFromVector(mIndexBuffer, 0, mesh.numIndices);
+			
+			mesh.isRemotelyAllocated = true;
+		}
+		
+		override public function freeRemoteResource():void 
+		{
+			if ( mesh.vertexBuffer ) mesh.vertexBuffer.dispose();
+			if ( mesh.indexBuffer ) mesh.indexBuffer.dispose();
+			
+			mesh.vertexBuffer = null;
+			mesh.indexBuffer = null;
+		}
+		
+		public function prepareDataForRemoteAllocation():void
+		{
+			mIndexBuffer = mesh.indexList;
+			mVertexBuffer = new Vector.<Number>();
+			
+			var i:int = 0;
+			var n:int = mesh.vertexList.length;
+			var vertex:Vertex3D;
+			
+			for (; i < n; i++) 
+			{
+				vertex = mesh.vertexList[i];
+				mVertexBuffer.push(vertex.x);
+				mVertexBuffer.push(vertex.y);
+				mVertexBuffer.push(vertex.u);
+				mVertexBuffer.push(vertex.v);
+			}
+			
+			mesh.numVertices = mesh.vertexList.length;
+			mesh.numIndices = mesh.indexList.length;
+			mesh.numTriangles = mesh.numIndices / 3;
+			
+			isDataPreparedForRemoteAllocation = true;
 		}
 		
 		override public function get resource():ResourceBase 

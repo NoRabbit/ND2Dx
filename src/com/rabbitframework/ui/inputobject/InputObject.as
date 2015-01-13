@@ -1,5 +1,6 @@
 package com.rabbitframework.ui.inputobject 
 {
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.UIBase;
 	import com.rabbitframework.utils.DragAndDropUtils;
 	import flash.display.Sprite;
@@ -8,8 +9,7 @@ package com.rabbitframework.ui.inputobject
 	import flash.text.TextField;
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getQualifiedClassName;
-	import org.osflash.signals.Signal;
-	import wgmeditor.managers.draganddrop.DragAndDropObject;
+	import com.rabbitframework.managers.draganddrop.DragAndDropObject;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -18,8 +18,6 @@ package com.rabbitframework.ui.inputobject
 	{
 		public var bg:Sprite;
 		public var txt:TextField;
-		
-		public var onChange:Signal = new Signal(Object);
 		
 		public function InputObject(value:Object = null, acceptedDroppableTypes:Array = null) 
 		{
@@ -83,15 +81,13 @@ package com.rabbitframework.ui.inputobject
 			
 			super.dataSource = value;
 			txt.text = dataProviderManager.getDataSourceLabel(_dataSource);
-			onChange.dispatch(value);
+			onChange.dispatchData(value);
 		}
 		
 		override public function disposeForPool():void 
 		{
 			super.disposeForPool();
-			onChange.removeAll();
 			txt.text = "";
-			_dataSource = null;
 		}
 		
 		override public function dispose():void 
@@ -99,9 +95,6 @@ package com.rabbitframework.ui.inputobject
 			super.dispose();
 			bg = null;
 			txt = null;
-			_dataSource = null;
-			onChange.removeAll();
-			onChange = null;
 		}
 	}
 

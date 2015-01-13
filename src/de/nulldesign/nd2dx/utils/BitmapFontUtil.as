@@ -2,7 +2,7 @@
 {
 	import com.rabbitframework.utils.XMLUtils;
 	import de.nulldesign.nd2dx.managers.resource.ResourceManager;
-	import de.nulldesign.nd2dx.resource.font.BitmapFont2DChar;
+	import de.nulldesign.nd2dx.resource.font.BitmapFont2DItemChar;
 	import de.nulldesign.nd2dx.resource.font.BitmapFont2DGlyph;
 	import de.nulldesign.nd2dx.resource.font.BitmapFont2DItem;
 	import de.nulldesign.nd2dx.resource.font.BitmapFont2DItemIcon;
@@ -32,14 +32,12 @@
 			icon.tintAlpha = tintAlpha;
 			
 			icon.texture = resourceManager.getTextureById(XMLUtils.getCleanString(xml.@textureId));
-			icon.width = XMLUtils.getCleanNumber(xml.@width);
-			icon.height = XMLUtils.getCleanNumber(xml.@height);
+			icon.width = XMLUtils.getCleanNumber(xml.@width, (icon.texture ? icon.texture.bitmapWidth : 0.0));
+			icon.height = XMLUtils.getCleanNumber(xml.@height, (icon.texture ? icon.texture.bitmapHeight : 0.0));
 			icon.paddingLeft = XMLUtils.getCleanNumber(xml.@paddingLeft);
 			icon.paddingRight = XMLUtils.getCleanNumber(xml.@paddingRight);
 			icon.paddingTop = XMLUtils.getCleanNumber(xml.@paddingTop);
 			icon.paddingBottom = XMLUtils.getCleanNumber(xml.@paddingBottom);
-			
-			icon.totalWidth = icon.paddingLeft + icon.width + icon.paddingRight;
 			
 			return icon;
 		}
@@ -57,8 +55,8 @@
 			word.word = text;
 			
 			var currentX:Number = 0.0;
-			var char:BitmapFont2DChar;
-			var lastChar:BitmapFont2DChar;
+			var char:BitmapFont2DItemChar;
+			var lastChar:BitmapFont2DItemChar;
 			
 			var i:int = 0;
 			var n:int = text.length;
@@ -66,8 +64,9 @@
 			// for each char in text
 			for (; i < n; i++) 
 			{
-				char = new BitmapFont2DChar();
-				word.vChars.push(char);
+				char = new BitmapFont2DItemChar();
+				word.vItems.push(char);
+				
 				char.glyph = style.getGlyphForId(text.charCodeAt(Number(i)));
 				
 				if ( char.glyph )
@@ -77,9 +76,16 @@
 						currentX += lastChar.glyph.getAmountForGlyphId(char.glyph.id);
 					}
 					
-					char.positionX = currentX;
+					char.xInText = currentX;
 					
 					currentX += char.glyph.advanceX + letterSpacing;
+					
+					if ( char.glyph.texture )
+					{
+						char.texture = char.glyph.texture;
+						char.width = char.glyph.texture.bitmapWidth;
+						char.height = char.glyph.texture.bitmapHeight;
+					}
 				}
 				
 				lastChar = char;
@@ -90,8 +96,6 @@
 				currentX -= lastChar.glyph.advanceX;
 				word.width = currentX + lastChar.glyph.texture.bitmapWidth;
 			}
-			
-			word.totalWidth = word.width;
 			
 			return word;
 		}
@@ -112,7 +116,7 @@
 			whiteSpace.style = style;
 			
 			var glyph:BitmapFont2DGlyph = style.getGlyphForId(32);
-			if ( glyph ) whiteSpace.width = whiteSpace.totalWidth = glyph.advanceX + whiteSpaceSpacing;
+			if ( glyph ) whiteSpace.width = glyph.advanceX + whiteSpaceSpacing;
 			
 			return whiteSpace;
 		}
@@ -128,9 +132,10 @@
 			for (; i < n; i++) 
 			{
 				item = vItemsInLine[i];
+				
 				if ( (item is BitmapFont2DItemWhiteSpace) == false )
 				{
-					totalSize += item.totalWidth;
+					totalSize += item.width;
 					totalItems++;
 				}
 			}

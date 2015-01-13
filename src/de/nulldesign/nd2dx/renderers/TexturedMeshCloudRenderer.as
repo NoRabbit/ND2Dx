@@ -17,7 +17,11 @@ package de.nulldesign.nd2dx.renderers
 	import flash.system.ApplicationDomain;
 	import flash.utils.ByteArray;
 	import flash.utils.Endian;
-	import avm2.intrinsics.memory.*;
+	
+	ND2DX::USE_DOMAIN_MEMORY_BATCHING
+	{
+		import avm2.intrinsics.memory.*;
+	}
 	
 	/**
 	 * ...
@@ -80,7 +84,7 @@ package de.nulldesign.nd2dx.renderers
 		
 		private var parent:Node2D;
 		private var texture:Texture2D;
-		private var mainTexture:Texture2D;
+		private var baseTexture:Texture2D;
 		private var shader:Shader2D;
 		private var shaderProgram:ShaderProgram2D;
 		
@@ -161,13 +165,20 @@ package de.nulldesign.nd2dx.renderers
 			super.init(context, camera);
 			
 			maxVertices = 20000;
-			vIndexBuffer = new Vector.<uint>((maxVertices - 2) * 3, true);
+			vIndexBuffer = new Vector.<uint>(maxVertices - 2, true);
 			
-			baVertexBuffer = new ByteArray();
-			baVertexBuffer.length = maxVertices * numFloatsPerVertex * 4;
-			baVertexBuffer.endian = Endian.LITTLE_ENDIAN;
+			ND2DX::USE_DOMAIN_MEMORY_BATCHING
+			{
+				baVertexBuffer = new ByteArray();
+				baVertexBuffer.length = maxVertices * numFloatsPerVertex * 4;
+				baVertexBuffer.endian = Endian.LITTLE_ENDIAN;
+				ApplicationDomain.currentDomain.domainMemory = baVertexBuffer;
+			}
 			
-			ApplicationDomain.currentDomain.domainMemory = baVertexBuffer;
+			ND2DX::USE_VECTOR_BATCHING
+			{
+				vVertexBuffer = new Vector.<Number>(maxVertices * numFloatsPerVertex * 4, true);
+			}
 			
 			createBuffersAndShaders();
 		}
@@ -176,7 +187,10 @@ package de.nulldesign.nd2dx.renderers
 		{
 			if ( !isInited ) return;
 			
-			ApplicationDomain.currentDomain.domainMemory = baVertexBuffer;
+			ND2DX::USE_DOMAIN_MEMORY_BATCHING
+			{
+				ApplicationDomain.currentDomain.domainMemory = baVertexBuffer;
+			}
 		}
 		
 		override public function handleDeviceLoss(context:Context3D):void 
@@ -202,17 +216,21 @@ package de.nulldesign.nd2dx.renderers
 		{
 			super.prepare();
 			
+			ND2DX::USE_DOMAIN_MEMORY_BATCHING
+			{
+				baVertexBuffer.position = 0;
+			}
+			
 			vertexBufferIndex = 0;
 			indexBufferIndex = 0;
 			totalVertices = 0;
 			totalTriangles = 0;
 			totalMeshes = 0;
-			baVertexBuffer.position = 0;
 			scissorRect = null;
 			if ( vScissorRects.length ) vScissorRects.splice(0, vScissorRects.length);
 			
 			texture = null;
-			mainTexture = null;
+			baseTexture = null;
 			parent = null;
 			
 			parentWorldModelMatrix_00 = 1.0;
@@ -237,7 +255,7 @@ package de.nulldesign.nd2dx.renderers
 			parentWorldModelMatrix_31 = parentWorldModelMatrixVector[13];
 		}
 		
-		override public function drawTexturedMesh(texture:Texture2D, useTextureSize:Boolean, vertices:Vector.<Vertex3D>, indices:Vector.<uint>, parent:Node2D, node:Node2D = null, x:Number = 0.0, y:Number = 0.0, z:Number = 0.0, scaleX:Number = 1.0, scaleY:Number = 1.0, scaleZ:Number = 1.0, rotationZ:Number = 0.0, rotationY:Number = 0.0, rotationX:Number = 0.0, r:Number = 1.0, g:Number = 1.0, b:Number = 1.0, a:Number = 1.0, uvOffsetX:Number = 0.0, uvOffsetY:Number = 0.0, uvScaleX:Number = 1.0, uvScaleY:Number = 1.0, blendModeSrc:String = Context3DBlendFactor.ONE, blendModeDst:String = Context3DBlendFactor.ONE_MINUS_SOURCE_ALPHA, pivotX:Number = 0.0, pivotY:Number = 0.0):void 
+		override public function drawTexturedMesh(texture:Texture2D, useTextureSize:Boolean, vertices:Vector.<Vertex3D>, indices:Vector.<uint>, parent:Node2D, node:Node2D = null, x:Number = 0.0, y:Number = 0.0, z:Number = 0.0, scaleX:Number = 1.0, scaleY:Number = 1.0, scaleZ:Number = 1.0, rotationZ:Number = 0.0, rotationY:Number = 0.0, rotationX:Number = 0.0, r:Number = 1.0, g:Number = 1.0, b:Number = 1.0, a:Number = 1.0, uvOffsetX:Number = 0.0, uvOffsetY:Number = 0.0, uvScaleX:Number = 1.0, uvScaleY:Number = 1.0, blendModeSrc:String = "one", blendModeDst:String = "oneMinusSourceAlpha", pivotX:Number = 0.0, pivotY:Number = 0.0):void 
 		{
 			if ( this.parent != parent )
 			{
@@ -247,10 +265,10 @@ package de.nulldesign.nd2dx.renderers
 			
 			if ( this.texture != texture )
 			{
-				if ( mainTexture != texture.mainParent )
+				if ( baseTexture != texture.base )
 				{
 					draw();
-					mainTexture = texture.mainParent;
+					baseTexture = texture.base;
 				}
 				
 				this.texture = texture;
@@ -352,27 +370,47 @@ package de.nulldesign.nd2dx.renderers
 				uv1x = uvRect.x + (uvRect.width * vertex.u);
 				uv1y = uvRect.y + (uvRect.height * vertex.v);
 				
-				// set data to bytearray
-				sf32(parentWorldModelMatrix_00 * v1x_prep + parentWorldModelMatrix_10 * v1y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex));
-				sf32(parentWorldModelMatrix_01 * v1x_prep + parentWorldModelMatrix_11 * v1y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 4));
+				ND2DX::USE_DOMAIN_MEMORY_BATCHING
+				{
+					// set data to bytearray
+					sf32(parentWorldModelMatrix_00 * v1x_prep + parentWorldModelMatrix_10 * v1y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex));
+					sf32(parentWorldModelMatrix_01 * v1x_prep + parentWorldModelMatrix_11 * v1y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 4));
+					
+					sf32(uv1x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 8));
+					sf32(uv1y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 12));
+					
+					sf32(r * vertex.r, int(vertexBufferIndex + 16));
+					sf32(g * vertex.g, int(vertexBufferIndex + 20));
+					sf32(b * vertex.b, int(vertexBufferIndex + 24));
+					sf32(a * vertex.a, int(vertexBufferIndex + 28));
+					
+					vertexBufferIndex += 32;
+				}
 				
-				sf32(uv1x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 8));
-				sf32(uv1y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 12));
+				ND2DX::USE_VECTOR_BATCHING
+				{
+					// set data to vector
+					vVertexBuffer[int(vertexBufferIndex)] = parentWorldModelMatrix_00 * v1x_prep + parentWorldModelMatrix_10 * v1y_prep + parentWorldModelMatrix_30;
+					vVertexBuffer[int(vertexBufferIndex + 1)] = parentWorldModelMatrix_01 * v1x_prep + parentWorldModelMatrix_11 * v1y_prep + parentWorldModelMatrix_31;
+					
+					vVertexBuffer[int(vertexBufferIndex + 2)] = uv1x * uvScaleX + uvOffsetX;
+					vVertexBuffer[int(vertexBufferIndex + 3)] = uv1y * uvScaleY + uvOffsetY;
+					
+					vVertexBuffer[int(vertexBufferIndex + 4)] = r * vertex.r;
+					vVertexBuffer[int(vertexBufferIndex + 5)] = g * vertex.g;
+					vVertexBuffer[int(vertexBufferIndex + 6)] = b * vertex.b;
+					vVertexBuffer[int(vertexBufferIndex + 7)] = a * vertex.a;
+					
+					vertexBufferIndex += 8;
+				}
 				
-				sf32(r, int(vertexBufferIndex + 16));
-				sf32(g, int(vertexBufferIndex + 20));
-				sf32(b, int(vertexBufferIndex + 24));
-				sf32(a, int(vertexBufferIndex + 28));
-				
-				// increment id
-				vertexBufferIndex += 32;
 				totalVertices ++;
 			}
 			
 			totalMeshes ++;
 		}
 		
-		override public function drawTexturedQuad(texture:Texture2D, useTextureSize:Boolean, parent:Node2D, node:Node2D = null, x:Number = 0.0, y:Number = 0.0, z:Number = 0.0, scaleX:Number = 1.0, scaleY:Number = 1.0, scaleZ:Number = 1.0, rotationZ:Number = 0.0, rotationY:Number = 0.0, rotationX:Number = 0.0, r:Number = 1.0, g:Number = 1.0, b:Number = 1.0, a:Number = 1.0, uvOffsetX:Number = 0.0, uvOffsetY:Number = 0.0, uvScaleX:Number = 1.0, uvScaleY:Number = 1.0, blendModeSrc:String = Context3DBlendFactor.ONE, blendModeDst:String = Context3DBlendFactor.ONE_MINUS_SOURCE_ALPHA, pivotX:Number = 0.0, pivotY:Number = 0.0):void 
+		override public function drawTexturedQuad(texture:Texture2D, useTextureSize:Boolean, parent:Node2D, node:Node2D = null, x:Number = 0.0, y:Number = 0.0, z:Number = 0.0, scaleX:Number = 1.0, scaleY:Number = 1.0, scaleZ:Number = 1.0, rotationZ:Number = 0.0, rotationY:Number = 0.0, rotationX:Number = 0.0, r:Number = 1.0, g:Number = 1.0, b:Number = 1.0, a:Number = 1.0, uvOffsetX:Number = 0.0, uvOffsetY:Number = 0.0, uvScaleX:Number = 1.0, uvScaleY:Number = 1.0, blendModeSrc:String = "one", blendModeDst:String = "oneMinusSourceAlpha", pivotX:Number = 0.0, pivotY:Number = 0.0):void 
 		{
 			if ( this.parent != parent )
 			{
@@ -382,10 +420,10 @@ package de.nulldesign.nd2dx.renderers
 			
 			if ( this.texture != texture )
 			{
-				if ( mainTexture != texture.mainParent )
+				if ( baseTexture != texture.base )
 				{
 					draw();
-					mainTexture = texture.mainParent;
+					baseTexture = texture.base;
 				}
 				
 				this.texture = texture;
@@ -502,60 +540,122 @@ package de.nulldesign.nd2dx.renderers
 			uv4x = uvRect.x + uvRect.width;
 			uv4y = uvRect.y + uvRect.height;
 			
-			// v1
-			sf32(parentWorldModelMatrix_00 * v1x_prep + parentWorldModelMatrix_10 * v1y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex));
-			sf32(parentWorldModelMatrix_01 * v1x_prep + parentWorldModelMatrix_11 * v1y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 4));
+			ND2DX::USE_DOMAIN_MEMORY_BATCHING
+			{
+				// set data to bytearray
+				// v1
+				sf32(parentWorldModelMatrix_00 * v1x_prep + parentWorldModelMatrix_10 * v1y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex));
+				sf32(parentWorldModelMatrix_01 * v1x_prep + parentWorldModelMatrix_11 * v1y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 4));
+				
+				sf32(uv1x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 8));
+				sf32(uv1y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 12));
+				
+				sf32(r, int(vertexBufferIndex + 16));
+				sf32(g, int(vertexBufferIndex + 20));
+				sf32(b, int(vertexBufferIndex + 24));
+				sf32(a, int(vertexBufferIndex + 28));
+				
+				// v2
+				
+				sf32(parentWorldModelMatrix_00 * v2x_prep + parentWorldModelMatrix_10 * v2y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex + 32));
+				sf32(parentWorldModelMatrix_01 * v2x_prep + parentWorldModelMatrix_11 * v2y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 36));
+				
+				sf32(uv2x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 40));
+				sf32(uv2y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 44));
+				
+				sf32(r, int(vertexBufferIndex + 48));
+				sf32(g, int(vertexBufferIndex + 52));
+				sf32(b, int(vertexBufferIndex + 56));
+				sf32(a, int(vertexBufferIndex + 60));
+				
+				// v3
+				
+				sf32(parentWorldModelMatrix_00 * v3x_prep + parentWorldModelMatrix_10 * v3y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex + 64));
+				sf32(parentWorldModelMatrix_01 * v3x_prep + parentWorldModelMatrix_11 * v3y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 68));
+				
+				sf32(uv3x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 72));
+				sf32(uv3y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 76));
+				
+				sf32(r, int(vertexBufferIndex + 80));
+				sf32(g, int(vertexBufferIndex + 84));
+				sf32(b, int(vertexBufferIndex + 88));
+				sf32(a, int(vertexBufferIndex + 92));
+				
+				// v4
+				
+				sf32(parentWorldModelMatrix_00 * v4x_prep + parentWorldModelMatrix_10 * v4y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex + 96));
+				sf32(parentWorldModelMatrix_01 * v4x_prep + parentWorldModelMatrix_11 * v4y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 100));
+				
+				sf32(uv4x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 104));
+				sf32(uv4y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 108));
+				
+				sf32(r, int(vertexBufferIndex + 112));
+				sf32(g, int(vertexBufferIndex + 116));
+				sf32(b, int(vertexBufferIndex + 120));
+				sf32(a, int(vertexBufferIndex + 124));
+				
+				vertexBufferIndex += 128;
+			}
 			
-			sf32(uv1x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 8));
-			sf32(uv1y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 12));
+			ND2DX::USE_VECTOR_BATCHING
+			{
+				// set data to vector
+				
+				// v1
+				vVertexBuffer[int(vertexBufferIndex)] = parentWorldModelMatrix_00 * v1x_prep + parentWorldModelMatrix_10 * v1y_prep + parentWorldModelMatrix_30;
+				vVertexBuffer[int(vertexBufferIndex + 1)] = parentWorldModelMatrix_01 * v1x_prep + parentWorldModelMatrix_11 * v1y_prep + parentWorldModelMatrix_31;
+				
+				vVertexBuffer[int(vertexBufferIndex + 2)] = uv1x * uvScaleX + uvOffsetX;
+				vVertexBuffer[int(vertexBufferIndex + 3)] = uv1y * uvScaleY + uvOffsetY;
+				
+				vVertexBuffer[int(vertexBufferIndex + 4)] = r;
+				vVertexBuffer[int(vertexBufferIndex + 5)] = g;
+				vVertexBuffer[int(vertexBufferIndex + 6)] = b;
+				vVertexBuffer[int(vertexBufferIndex + 7)] = a;
+				
+				// v2
+				
+				vVertexBuffer[int(vertexBufferIndex + 8)] = parentWorldModelMatrix_00 * v2x_prep + parentWorldModelMatrix_10 * v2y_prep + parentWorldModelMatrix_30;
+				vVertexBuffer[int(vertexBufferIndex + 9)] = parentWorldModelMatrix_01 * v2x_prep + parentWorldModelMatrix_11 * v2y_prep + parentWorldModelMatrix_31;
+				
+				vVertexBuffer[int(vertexBufferIndex + 10)] = uv2x * uvScaleX + uvOffsetX;
+				vVertexBuffer[int(vertexBufferIndex + 11)] = uv2y * uvScaleY + uvOffsetY;
+				
+				vVertexBuffer[int(vertexBufferIndex + 12)] = r;
+				vVertexBuffer[int(vertexBufferIndex + 13)] = g;
+				vVertexBuffer[int(vertexBufferIndex + 14)] = b;
+				vVertexBuffer[int(vertexBufferIndex + 15)] = a;
+				
+				// v3
+				
+				vVertexBuffer[int(vertexBufferIndex + 16)] = parentWorldModelMatrix_00 * v3x_prep + parentWorldModelMatrix_10 * v3y_prep + parentWorldModelMatrix_30;
+				vVertexBuffer[int(vertexBufferIndex + 17)] = parentWorldModelMatrix_01 * v3x_prep + parentWorldModelMatrix_11 * v3y_prep + parentWorldModelMatrix_31;
+				
+				vVertexBuffer[int(vertexBufferIndex + 18)] = uv3x * uvScaleX + uvOffsetX;
+				vVertexBuffer[int(vertexBufferIndex + 19)] = uv3y * uvScaleY + uvOffsetY;
+				
+				vVertexBuffer[int(vertexBufferIndex + 20)] = r;
+				vVertexBuffer[int(vertexBufferIndex + 21)] = g;
+				vVertexBuffer[int(vertexBufferIndex + 22)] = b;
+				vVertexBuffer[int(vertexBufferIndex + 23)] = a;
+				
+				// v4
+				
+				vVertexBuffer[int(vertexBufferIndex + 24)] = parentWorldModelMatrix_00 * v4x_prep + parentWorldModelMatrix_10 * v4y_prep + parentWorldModelMatrix_30;
+				vVertexBuffer[int(vertexBufferIndex + 25)] = parentWorldModelMatrix_01 * v4x_prep + parentWorldModelMatrix_11 * v4y_prep + parentWorldModelMatrix_31;
+				
+				vVertexBuffer[int(vertexBufferIndex + 26)] = uv4x * uvScaleX + uvOffsetX;
+				vVertexBuffer[int(vertexBufferIndex + 27)] = uv4y * uvScaleY + uvOffsetY;
+				
+				vVertexBuffer[int(vertexBufferIndex + 28)] = r;
+				vVertexBuffer[int(vertexBufferIndex + 29)] = g;
+				vVertexBuffer[int(vertexBufferIndex + 30)] = b;
+				vVertexBuffer[int(vertexBufferIndex + 31)] = a;
+				
+				vertexBufferIndex += 32;
+			}
 			
-			sf32(r, int(vertexBufferIndex + 16));
-			sf32(g, int(vertexBufferIndex + 20));
-			sf32(b, int(vertexBufferIndex + 24));
-			sf32(a, int(vertexBufferIndex + 28));
-			
-			// v2
-			
-			sf32(parentWorldModelMatrix_00 * v2x_prep + parentWorldModelMatrix_10 * v2y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex + 32));
-			sf32(parentWorldModelMatrix_01 * v2x_prep + parentWorldModelMatrix_11 * v2y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 36));
-			
-			sf32(uv2x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 40));
-			sf32(uv2y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 44));
-			
-			sf32(r, int(vertexBufferIndex + 48));
-			sf32(g, int(vertexBufferIndex + 52));
-			sf32(b, int(vertexBufferIndex + 56));
-			sf32(a, int(vertexBufferIndex + 60));
-			
-			// v3
-			
-			sf32(parentWorldModelMatrix_00 * v3x_prep + parentWorldModelMatrix_10 * v3y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex + 64));
-			sf32(parentWorldModelMatrix_01 * v3x_prep + parentWorldModelMatrix_11 * v3y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 68));
-			
-			sf32(uv3x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 72));
-			sf32(uv3y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 76));
-			
-			sf32(r, int(vertexBufferIndex + 80));
-			sf32(g, int(vertexBufferIndex + 84));
-			sf32(b, int(vertexBufferIndex + 88));
-			sf32(a, int(vertexBufferIndex + 92));
-			
-			// v4
-			
-			sf32(parentWorldModelMatrix_00 * v4x_prep + parentWorldModelMatrix_10 * v4y_prep + parentWorldModelMatrix_30, int(vertexBufferIndex + 96));
-			sf32(parentWorldModelMatrix_01 * v4x_prep + parentWorldModelMatrix_11 * v4y_prep + parentWorldModelMatrix_31, int(vertexBufferIndex + 100));
-			
-			sf32(uv4x * uvScaleX + uvOffsetX, int(vertexBufferIndex + 104));
-			sf32(uv4y * uvScaleY + uvOffsetY, int(vertexBufferIndex + 108));
-			
-			sf32(r, int(vertexBufferIndex + 112));
-			sf32(g, int(vertexBufferIndex + 116));
-			sf32(b, int(vertexBufferIndex + 120));
-			sf32(a, int(vertexBufferIndex + 124));
-			
-			vertexBufferIndex += 128;
 			totalVertices += 4;
-			
 			totalMeshes ++;
 		}
 		
@@ -563,8 +663,17 @@ package de.nulldesign.nd2dx.renderers
 		{
 			if ( totalVertices < 1 ) return;
 			
-			// upload vertexBuffer
-			vertexBuffer.uploadFromByteArray(baVertexBuffer, 0, 0, maxVertices);
+			ND2DX::USE_DOMAIN_MEMORY_BATCHING
+			{
+				// upload vertexBuffer
+				vertexBuffer.uploadFromByteArray(baVertexBuffer, 0, 0, maxVertices);
+			}
+			
+			ND2DX::USE_VECTOR_BATCHING
+			{
+				// upload vertexBuffer
+				vertexBuffer.uploadFromVector(vVertexBuffer, 0, maxVertices);
+			}
 			
 			// upload indexBuffer
 			indexBuffer.uploadFromVector(vIndexBuffer, 0, vIndexBuffer.length);
@@ -607,7 +716,12 @@ package de.nulldesign.nd2dx.renderers
 			totalVertices = 0;
 			totalTriangles = 0;
 			totalMeshes = 0;
-			baVertexBuffer.position = 0;
+			
+			ND2DX::USE_DOMAIN_MEMORY_BATCHING
+			{
+				baVertexBuffer.position = 0;
+			}
+			
 		}
 	}
 

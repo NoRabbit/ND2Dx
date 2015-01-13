@@ -29,7 +29,6 @@
  */
 package de.nulldesign.nd2dx.resource.texture 
 {
-	import com.rabbitframework.signals.RabbitSignal;
 	import de.nulldesign.nd2dx.resource.font.BitmapFont2DStyle;
 	import de.nulldesign.nd2dx.resource.ResourceAllocatorBase;
 	import de.nulldesign.nd2dx.resource.ResourceBase;
@@ -48,8 +47,6 @@ package de.nulldesign.nd2dx.resource.texture
 
 	public class Texture2D extends ResourceBase
 	{
-		public var onSlicesChanged:RabbitSignal = new RabbitSignal();
-		
 		private var _textureOptions:uint = TextureOption.QUALITY_ULTRA;
 		
 		public function get textureOptions():uint 
@@ -115,7 +112,7 @@ package de.nulldesign.nd2dx.resource.texture
 		public var vSubTextures:Vector.<Texture2D> = new Vector.<Texture2D>();
 		
 		// parent Texture2D if is a sub texture
-		public var mainParent:Texture2D;
+		public var base:Texture2D;
 		public var parent:Texture2D;
 		
 		// name of frame if this texture is part of an atlas
@@ -124,7 +121,7 @@ package de.nulldesign.nd2dx.resource.texture
 		
 		public function Texture2D(allocator:ResourceAllocatorBase = null) 
 		{
-			mainParent = this;
+			base = this;
 			super(allocator);
 		}
 		
@@ -185,42 +182,6 @@ package de.nulldesign.nd2dx.resource.texture
 		
 		public function getUVRectFromDimensions(x:Number, y:Number, width:Number, height:Number):Rectangle
 		{
-			/*
-			var finalTextureWidth:Number = textureWidth;
-			var finalTextureHeight:Number = textureHeight;
-			
-			if ( parent )
-			{
-				if ( frameRect )
-				{
-					x += frameRect.x;
-					y += frameRect.y;
-				}
-				
-				var currentParent:Texture2D = parent;
-				
-				while (currentParent)
-				{
-					if ( currentParent.frameRect )
-					{
-						x += currentParent.frameRect.x;
-						y += currentParent.frameRect.y;
-					}
-					
-					finalTextureWidth = currentParent.textureWidth;
-					finalTextureHeight = currentParent.textureHeight;
-					
-					currentParent = currentParent.parent;
-				}
-			}
-			
-			var rect:Rectangle = new Rectangle(x, y, width, height);
-			
-			rect.x /= finalTextureWidth;
-			rect.y /= finalTextureHeight;
-			rect.width /= finalTextureWidth;
-			rect.height /= finalTextureHeight;*/
-			
 			var rect:Rectangle = new Rectangle(x, y, width, height);
 			
 			rect.x /= originalBitmapWidth;
@@ -238,12 +199,22 @@ package de.nulldesign.nd2dx.resource.texture
 			rect.width *= uvRect.width;
 			rect.height *= uvRect.height;
 			
-			//trace("getUVRectFromDimensions", x, y, width, height, rect, textureWidth, textureHeight, uvRect);
-			
 			return rect;
 		}
 		
-		override public function get resourceId():String 
+		override public function addSignalListener(type:String, callback:Function, once:Boolean = false):void 
+		{
+			if ( base && base != this )
+			{
+				base.addSignalListener(type, callback, once);
+			}
+			else
+			{
+				super.addSignalListener(type, callback, once);
+			}
+		}
+		
+		override public function get id():String 
 		{
 			if ( parent )
 			{
@@ -258,7 +229,7 @@ package de.nulldesign.nd2dx.resource.texture
 					}
 					else
 					{
-						s = currentParent.resourceId + "." + s;
+						s = currentParent.id + "." + s;
 					}
 					
 					currentParent = currentParent.parent;
@@ -268,14 +239,9 @@ package de.nulldesign.nd2dx.resource.texture
 			}
 			else
 			{
-				return super.resourceId;
+				return super.id;
 			}
 			
-		}
-		
-		override public function set resourceId(value:String):void 
-		{
-			super.resourceId = value;
 		}
 		
 		public function get frameNameToSubTexture2D():Dictionary 
@@ -312,7 +278,7 @@ package de.nulldesign.nd2dx.resource.texture
 		
 		override public function dispose():void 
 		{
-			if ( isRemotellyAllocated ) allocator.freeRemoteResource();
+			if ( isRemotelyAllocated ) allocator.freeRemoteResource();
 			if ( isLocallyAllocated ) allocator.freeLocalResource();
 		}
 		

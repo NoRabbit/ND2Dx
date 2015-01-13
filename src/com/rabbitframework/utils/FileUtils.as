@@ -1,7 +1,9 @@
 ﻿package com.rabbitframework.utils 
 {
 	WGM::IS_EDITOR
-	import flash.filesystem.File;
+	{
+		import flash.filesystem.File;
+	}
 	
 	/**
 	 * ...
@@ -60,17 +62,14 @@
 		
 		public static function getRelativePath(rootPath:String, filePath:String):String
 		{
-			if ( WGM::IS_EDITOR )
+			WGM::IS_EDITOR
 			{
 				var rootDir:File = new File(getDirectoryOrFileFromPath(rootPath));
 				return rootDir.getRelativePath(new File(filePath));
 			}
-			else
-			{
-				return filePath;
-			}
+			
+			return filePath;
 		}
-		
 	}
 	
 }

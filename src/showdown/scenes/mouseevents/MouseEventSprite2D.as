@@ -37,7 +37,7 @@ package showdown.scenes.mouseevents
 		
 		override public function step(elapsed:Number):void 
 		{
-			if ( hitTest() )
+			if ( hitTest(_mouseX, _mouseY) )
 			{
 				aim.visible = true;
 				aim.x = _mouseX;

@@ -1,9 +1,7 @@
 package de.nulldesign.nd2dx.components 
 {
 	import de.nulldesign.nd2dx.components.renderers.TexturedMeshRendererComponent;
-	import de.nulldesign.nd2dx.materials.MaterialBase;
 	import de.nulldesign.nd2dx.components.renderers.properties.TextureProperty;
-	import de.nulldesign.nd2dx.materials.Texture2DMaterial;
 	import de.nulldesign.nd2dx.resource.texture.AnimatedTexture2D;
 	import de.nulldesign.nd2dx.resource.texture.Texture2D;
 	import flash.geom.Point;
@@ -59,6 +57,7 @@ package de.nulldesign.nd2dx.components
 			}
 		}
 		
+		[WGM (position = -1000, label = "fps")]
 		public function get fps():Number 
 		{
 			return _fps;
@@ -70,6 +69,7 @@ package de.nulldesign.nd2dx.components
 			elapsedTimeForFrame = 1 / _fps;
 		}
 		
+		[WGM (position = -900, label = "source", acceptedTypes = "de.nulldesign.nd2dx.components.renderers.TexturedMeshRendererComponent,de.nulldesign.nd2dx.components.renderers.properties.TextureProperty")]
 		public function get source():Object 
 		{
 			return (texturedMeshRendererComponent ? texturedMeshRendererComponent : textureProperty);
@@ -95,6 +95,7 @@ package de.nulldesign.nd2dx.components
 			checkIfReadyForRender();
 		}
 		
+		[WGM (position = -800, label = "animated texture", acceptedTypes = "de.nulldesign.nd2dx.resource.texture.AnimatedTexture2D")]
 		public function get animatedTexture2D():AnimatedTexture2D 
 		{
 			return _animatedTexture2D;

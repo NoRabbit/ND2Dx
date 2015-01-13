@@ -3,9 +3,9 @@ package showdown.scenes.particlesystem
 	import de.nulldesign.nd2dx.components.renderers.ParticleSystem2DRendererComponent;
 	import de.nulldesign.nd2dx.display.Node2D;
 	import de.nulldesign.nd2dx.display.Scene2D;
-	import de.nulldesign.nd2dx.materials.BlendModePresets;
 	import de.nulldesign.nd2dx.utils.NodeUtils;
 	import de.nulldesign.nd2dx.utils.ParticleSystem2DPreset;
+	import flash.display3D.Context3DBlendFactor;
 	import showdown.assets.Assets;
 	import showdown.scenes.common.Bug;
 	import showdown.scenes.SceneBase;
@@ -27,8 +27,8 @@ package showdown.scenes.particlesystem
 			
 			particleSystem2DRenderComponent = new ParticleSystem2DRendererComponent();
 			particleSystem2DRenderComponent.texture = Assets.assetsTexture.getSubTextureByName("bug01");
-			particleSystem2DRenderComponent.blendModeSrc = BlendModePresets.ADD.src;
-			particleSystem2DRenderComponent.blendModeDst = BlendModePresets.ADD.dst;
+			particleSystem2DRenderComponent.blendModeSrc = Context3DBlendFactor.ONE;
+			particleSystem2DRenderComponent.blendModeDst = Context3DBlendFactor.ONE;
 			
 			particleSystem2DRenderComponent.numParticles = 10000;
 			particleSystem2DRenderComponent.preset = new ParticleSystem2DPreset();

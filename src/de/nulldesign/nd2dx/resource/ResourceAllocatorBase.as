@@ -22,12 +22,12 @@ package de.nulldesign.nd2dx.resource
 		
 		public var isExternalLoader:Boolean = false;
 		
-		public var freeLocalResourceAfterAllocated:Boolean = false;
+		public var freeLocalResourceAfterRemoteAllocation:Boolean = false;
 		
-		public function ResourceAllocatorBase(freeLocalResourceAfterAllocated:Boolean = false) 
+		public function ResourceAllocatorBase(freeLocalResourceAfterRemoteAllocation:Boolean = false) 
 		{
 			eGroup = eManager.getUniqueGroupId();
-			this.freeLocalResourceAfterAllocated = freeLocalResourceAfterAllocated;
+			this.freeLocalResourceAfterRemoteAllocation = freeLocalResourceAfterRemoteAllocation;
 		}
 		
 		public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void

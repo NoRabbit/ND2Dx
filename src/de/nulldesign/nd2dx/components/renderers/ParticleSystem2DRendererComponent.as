@@ -1,11 +1,9 @@
 package de.nulldesign.nd2dx.components.renderers 
 {
 	import de.nulldesign.nd2dx.managers.resource.ResourceManager;
-	import de.nulldesign.nd2dx.materials.MaterialBase;
-	import de.nulldesign.nd2dx.materials.ParticleSystem2DMaterial;
 	import de.nulldesign.nd2dx.renderers.RendererBase;
 	import de.nulldesign.nd2dx.resource.mesh.Mesh2D;
-	import de.nulldesign.nd2dx.resource.mesh.ParticleSystem2DMesh2D;
+	import de.nulldesign.nd2dx.resource.mesh.ParticleSystemMesh2DAllocator;
 	import de.nulldesign.nd2dx.resource.shader.Shader2D;
 	import de.nulldesign.nd2dx.resource.shader.ShaderProgram2D;
 	import de.nulldesign.nd2dx.resource.texture.Texture2D;
@@ -188,7 +186,8 @@ package de.nulldesign.nd2dx.components.renderers
 		public var gravityY:Number = 0.0;
 		public var currentTime:Number = 0.0;
 		
-		public var particleSystem2DMesh2D:ParticleSystem2DMesh2D;
+		public var mesh:Mesh2D;
+		public var meshAllocator:ParticleSystemMesh2DAllocator;
 		
 		public var width:Number = 0.0;
 		public var height:Number = 0.0;
@@ -205,16 +204,15 @@ package de.nulldesign.nd2dx.components.renderers
 		
 		private var programConstants:Vector.<Number>;
 		
-		public var mat:ParticleSystem2DMaterial = new ParticleSystem2DMaterial();
-		
 		public function ParticleSystem2DRendererComponent() 
 		{
 			if( !shader ) shader = ResourceManager.getInstance().getResourceById("shader_particlesystem2drenderer") as Shader2D;
 			
 			programConstants = new Vector.<Number>(20, true);
 			
-			particleSystem2DMesh2D = new ParticleSystem2DMesh2D();
-			MeshUtil.generateMeshData(particleSystem2DMesh2D, 1, 1, 1, 1);
+			meshAllocator = new ParticleSystemMesh2DAllocator();
+			mesh = new Mesh2D(meshAllocator);
+			
 			preset = new ParticleSystem2DPreset();
 		}
 		
@@ -287,13 +285,9 @@ package de.nulldesign.nd2dx.components.renderers
 			
 			node.checkAndUpdateMatrixIfNeeded();
 			
-			mat.node = node;
-			mat.texture = texture;
-			mat.mesh = particleSystem2DMesh2D;
-			
 			currentTime += elapsed * 1000;
 			
-			if ( isBurst && currentTime > particleSystem2DMesh2D.totalDuration )
+			if ( isBurst && currentTime > meshAllocator.totalDuration )
 			{
 				isActive = false;
 			}
@@ -305,7 +299,7 @@ package de.nulldesign.nd2dx.components.renderers
 			
 			var context:Context3D = renderer.context;
 			
-			if ( particleSystem2DMesh2D.needUploadVertexBuffer ) particleSystem2DMesh2D.uploadBuffers(context);
+			if ( !mesh.isRemotelyAllocated ) meshAllocator.allocateRemoteResource(renderer.context);
 			if ( !shaderProgram ) shaderProgram = shader.getShaderProgram(context, texture, ["BURST", isBurst]);
 			
 			context.setProgram(shaderProgram.program);
@@ -316,13 +310,13 @@ package de.nulldesign.nd2dx.components.renderers
 			
 			if( renderer.scissorRect ) context.setScissorRectangle(renderer.scissorRect);
 			
-			context.setVertexBufferAt(0, particleSystem2DMesh2D.vertexBuffer, 0, Context3DVertexBufferFormat.FLOAT_2); // vertex
-			context.setVertexBufferAt(1, particleSystem2DMesh2D.vertexBuffer, 2, Context3DVertexBufferFormat.FLOAT_2); // uv
-			context.setVertexBufferAt(2, particleSystem2DMesh2D.vertexBuffer, 4, Context3DVertexBufferFormat.FLOAT_4); // misc (starttime, life, startsize, endsize
-			context.setVertexBufferAt(3, particleSystem2DMesh2D.vertexBuffer, 8, Context3DVertexBufferFormat.FLOAT_4); // velocity / startpos
-			context.setVertexBufferAt(4, particleSystem2DMesh2D.vertexBuffer, 12, Context3DVertexBufferFormat.FLOAT_4); // startcolor
-			context.setVertexBufferAt(5, particleSystem2DMesh2D.vertexBuffer, 16, Context3DVertexBufferFormat.FLOAT_4); // endcolor
-			context.setVertexBufferAt(6, particleSystem2DMesh2D.vertexBuffer, 20, Context3DVertexBufferFormat.FLOAT_2); // rotation
+			context.setVertexBufferAt(0, mesh.vertexBuffer, 0, Context3DVertexBufferFormat.FLOAT_2); // vertex
+			context.setVertexBufferAt(1, mesh.vertexBuffer, 2, Context3DVertexBufferFormat.FLOAT_2); // uv
+			context.setVertexBufferAt(2, mesh.vertexBuffer, 4, Context3DVertexBufferFormat.FLOAT_4); // misc (starttime, life, startsize, endsize
+			context.setVertexBufferAt(3, mesh.vertexBuffer, 8, Context3DVertexBufferFormat.FLOAT_4); // velocity / startpos
+			context.setVertexBufferAt(4, mesh.vertexBuffer, 12, Context3DVertexBufferFormat.FLOAT_4); // startcolor
+			context.setVertexBufferAt(5, mesh.vertexBuffer, 16, Context3DVertexBufferFormat.FLOAT_4); // endcolor
+			context.setVertexBufferAt(6, mesh.vertexBuffer, 20, Context3DVertexBufferFormat.FLOAT_2); // rotation
 			
 			context.setProgramConstantsFromMatrix(Context3DProgramType.VERTEX, 0, renderer.viewProjectionMatrix, true);
 			context.setProgramConstantsFromMatrix(Context3DProgramType.VERTEX, 4, node.worldModelMatrix, true);
@@ -354,11 +348,11 @@ package de.nulldesign.nd2dx.components.renderers
 			
 			context.setProgramConstantsFromVector(Context3DProgramType.VERTEX, 8, programConstants);
 			
-			context.drawTriangles(particleSystem2DMesh2D.indexBuffer, 0, particleSystem2DMesh2D.numTriangles);
+			context.drawTriangles(mesh.indexBuffer, 0, mesh.numTriangles);
 			
 			Statistics.drawCalls++;
-			Statistics.triangles += particleSystem2DMesh2D.numTriangles;
-			Statistics.sprites += particleSystem2DMesh2D.numParticles;
+			Statistics.triangles += mesh.numTriangles;
+			Statistics.sprites += meshAllocator.numParticles;
 			
 			// clear
 			context.setTextureAt(0, null);
@@ -374,11 +368,12 @@ package de.nulldesign.nd2dx.components.renderers
 		
 		public function updateParticles():void
 		{
-			particleSystem2DMesh2D.mVertexBuffer = null;
-			particleSystem2DMesh2D.needUploadVertexBuffer = true;
-			particleSystem2DMesh2D.numParticles = _numParticles;
-			particleSystem2DMesh2D.preset = _preset;
-			particleSystem2DMesh2D.prepareBuffersData();
+			meshAllocator.freeLocalResource();
+			meshAllocator.freeRemoteResource();
+			meshAllocator.preset = _preset;
+			meshAllocator.numParticles = _numParticles;
+			meshAllocator.allocateLocalResource();
+			
 			invalidateParticles = false;
 		}
 		

@@ -1,36 +1,25 @@
 package de.nulldesign.nd2dx.resource 
 {
-	import com.rabbitframework.signals.RabbitSignal;
+	import com.rabbitframework.signals.SignalDispatcher;
 	import com.rabbitframework.utils.IDisposable;
+	import de.nulldesign.nd2dx.signals.SignalTypes;
+	import de.nulldesign.nd2dx.utils.IIdentifiable;
 	/**
 	 * ...
 	 * @author Thomas John
 	 */
-	public class ResourceBase implements IDisposable
+	public class ResourceBase extends SignalDispatcher implements IIdentifiable, IDisposable
 	{
-		private var _resourceId:String = "";
-		private var _resourceName:String = "";
+		private var _id:String = "";
+		private var _name:String = "";
+		
 		private var _allocator:ResourceAllocatorBase;
 		
 		public var isCore:Boolean = false;
 		
-		public var isAllocating:Boolean = false;
-		public var isLocallyAllocated:Boolean = false;
-		public var isRemotellyAllocated:Boolean = false;
-		
-		//public var onLocallyAllocated:Signal = new Signal();
-		//public var onLocallyDeallocated:Signal = new Signal();
-		//public var onLocalAllocationError:Signal = new Signal();
-		//public var onRemotelyAllocated:Signal = new Signal();
-		//public var onRemotelyDeallocated:Signal = new Signal();
-		//public var onRemoteAllocationError:Signal = new Signal();
-		
-		public var onLocallyAllocated:RabbitSignal = new RabbitSignal();
-		public var onLocallyDeallocated:RabbitSignal = new RabbitSignal();
-		public var onLocalAllocationError:RabbitSignal = new RabbitSignal();
-		public var onRemotelyAllocated:RabbitSignal = new RabbitSignal();
-		public var onRemotelyDeallocated:RabbitSignal = new RabbitSignal();
-		public var onRemoteAllocationError:RabbitSignal = new RabbitSignal();
+		private var _isAllocating:Boolean = false;
+		private var _isLocallyAllocated:Boolean = false;
+		private var _isRemotellyAllocated:Boolean = false;
 		
 		public function ResourceBase(allocator:ResourceAllocatorBase) 
 		{
@@ -48,24 +37,14 @@ package de.nulldesign.nd2dx.resource
 			if ( _allocator ) _allocator.resource = this;
 		}
 		
-		public function get resourceId():String 
+		public function get name():String 
 		{
-			return _resourceId;
+			return _name;
 		}
 		
-		public function set resourceId(value:String):void 
+		public function set name(value:String):void 
 		{
-			_resourceId = value;
-		}
-		
-		public function get resourceName():String 
-		{
-			return _resourceName;
-		}
-		
-		public function set resourceName(value:String):void 
-		{
-			_resourceName = value;
+			_name = value;
 		}
 		
 		public function freeResource():void
@@ -78,12 +57,86 @@ package de.nulldesign.nd2dx.resource
 			
 		}
 		
+		/* INTERFACE de.nulldesign.nd2dx.utils.IIdentifiable */
+		
+		public function set id(value:String):void 
+		{
+			_id = value;
+		}
+		
+		public function get id():String 
+		{
+			return _id;
+		}
+		
+		public function get isAllocating():Boolean 
+		{
+			return _isAllocating;
+		}
+		
+		public function set isAllocating(value:Boolean):void 
+		{
+			if ( _isAllocating == value ) return;
+			
+			_isAllocating = value;
+			
+			if ( _isAllocating ) dispatchSignal(SignalTypes.RESOURCE_ALLOCATING, this);
+		}
+		
+		public function get isLocallyAllocated():Boolean 
+		{
+			return _isLocallyAllocated;
+		}
+		
+		public function set isLocallyAllocated(value:Boolean):void 
+		{
+			if ( _isLocallyAllocated == value ) return;
+			
+			_isLocallyAllocated = value;
+			
+			if ( _isLocallyAllocated )
+			{
+				dispatchSignal(SignalTypes.RESOURCE_LOCALLY_ALLOCATED, this);
+			}
+			else
+			{
+				dispatchSignal(SignalTypes.RESOURCE_LOCALLY_DEALLOCATED, this);
+			}
+			
+			dispatchSignal(SignalTypes.RESOURCE_UPDATED, this);
+		}
+		
+		public function get isRemotelyAllocated():Boolean 
+		{
+			return _isRemotellyAllocated;
+		}
+		
+		public function set isRemotelyAllocated(value:Boolean):void 
+		{
+			if ( _isRemotellyAllocated == value ) return;
+			
+			_isRemotellyAllocated = value;
+			
+			if ( _isRemotellyAllocated )
+			{
+				dispatchSignal(SignalTypes.RESOURCE_REMOTELY_ALLOCATED, this);
+			}
+			else
+			{
+				dispatchSignal(SignalTypes.RESOURCE_REMOTELY_DEALLOCATED, this);
+			}
+			
+			dispatchSignal(SignalTypes.RESOURCE_UPDATED, this);
+		}
+		
 		/* INTERFACE com.rabbitframework.utils.IDisposable */
 		
 		public function dispose():void 
 		{
 			
 		}
+		
+		
 	}
 
 }

@@ -1,11 +1,11 @@
 package com.rabbitframework.ui.button 
 {
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.styles.UIStyles;
 	import com.rabbitframework.ui.UIBase;
 	import flash.display.Sprite;
 	import flash.events.MouseEvent;
 	import flash.geom.ColorTransform;
-	import org.osflash.signals.Signal;
 	/**
 	 * ...
 	 * @author Thomas John

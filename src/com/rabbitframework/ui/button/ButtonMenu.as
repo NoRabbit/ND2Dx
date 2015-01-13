@@ -1,6 +1,7 @@
 package com.rabbitframework.ui.button 
 {
 	import com.rabbitframework.managers.pool.PoolManager;
+	import com.rabbitframework.signals.Signal;
 	import com.rabbitframework.ui.button.ButtonContainer;
 	import com.rabbitframework.ui.dataprovider.DataProviderBase;
 	import com.rabbitframework.ui.icon.Icon;
@@ -17,7 +18,6 @@ package com.rabbitframework.ui.button
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
 	import flash.text.TextField;
-	import org.osflash.signals.Signal;
 	
 	/**
 	 * ...
@@ -25,17 +25,35 @@ package com.rabbitframework.ui.button
 	 */
 	public class ButtonMenu extends ButtonContainer
 	{
-		public var poolManager:PoolManager = PoolManager.getInstance();
 		public var treeView:TreeView;
 		
 		private var _isOpen:Boolean;
 		
-		public var onSelect:Signal = new Signal(Object);
+		public var onSelect:Signal = new Signal();
 		
 		public function ButtonMenu() 
 		{
+			
+		}
+		
+		override public function init():void 
+		{
+			super.init();
+			
 			minUIWidth = 50.0;
 			minUIHeight = 20.0;
+			
+			uiHeight = 20.0;
+			
+			_paddingTop = 2.0;
+			_paddingBottom = 2.0;
+			_paddingLeft = 8.0;
+			_paddingRight = 8.0;
+			
+			_horizontalAlign = UIBase.HORIZONTAL_ALIGN_CENTER;
+			_verticalAlign = UIBase.VERTICAL_ALIGN_MIDDLE;
+			
+			_itemSpace = 4.0;
 		}
 		
 		override protected function onMouseDownHandler(e:MouseEvent):void 
@@ -145,7 +163,7 @@ package com.rabbitframework.ui.button
 		private function treeView_onSelectHandler(dataSource:Object):void 
 		{
 			isOpen = false;
-			onSelect.dispatch(dataSource);
+			onSelect.dispatchData(dataSource);
 		}
 		
 		private function stage_mouseDownHandlerForOpening(e:MouseEvent):void 

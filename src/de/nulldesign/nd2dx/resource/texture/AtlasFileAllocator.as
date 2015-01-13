@@ -3,6 +3,7 @@ package de.nulldesign.nd2dx.resource.texture
 	import com.rabbitframework.events.AssetEvent;
 	import com.rabbitframework.managers.assets.AssetGroup;
 	import com.rabbitframework.managers.assets.AssetUrlLoader;
+	import de.nulldesign.nd2dx.signals.SignalTypes;
 	/**
 	 * ...
 	 * @author Thomas John
@@ -11,9 +12,9 @@ package de.nulldesign.nd2dx.resource.texture
 	{
 		public var loader:AssetUrlLoader;
 		
-		public function AtlasFileAllocator(filePath:String, texture:Object, parserClass:Class, freeLocalResourceAfterAllocated:Boolean=false) 
+		public function AtlasFileAllocator(filePath:String, texture:Object, parserClass:Class, freeLocalResourceAfterRemoteAllocation:Boolean=false) 
 		{
-			super(null, texture, parserClass, freeLocalResourceAfterAllocated);
+			super(null, texture, parserClass, freeLocalResourceAfterRemoteAllocation);
 			this.filePath = filePath;
 			isExternalLoader = true;
 		}
@@ -21,7 +22,9 @@ package de.nulldesign.nd2dx.resource.texture
 		override public function allocateLocalResource(assetGroup:AssetGroup = null, forceAllocation:Boolean = false):void 
 		{
 			if ( atlas.isAllocating ) return;
+			if ( atlas.isLocallyAllocated && !forceAllocation ) return;
 			if ( !filePath ) return;
+			
 			atlas.isAllocating = true;
 			
 			eManager.removeAllFromGroup(eGroup + ".loader");
@@ -48,7 +51,8 @@ package de.nulldesign.nd2dx.resource.texture
 			loader.dispose();
 			loader = null;
 			
-			atlas.onLocalAllocationError.dispatch();
+			atlas.isAllocating = false;
+			atlas.dispatchSignal(SignalTypes.RESOURCE_LOCAL_ALLOCATION_ERROR);
 		}
 		
 		private function loader_completeHandler(e:AssetEvent):void 

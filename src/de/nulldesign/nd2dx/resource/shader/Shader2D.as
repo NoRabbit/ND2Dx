@@ -1,7 +1,6 @@
 package de.nulldesign.nd2dx.resource.shader 
 {
 	import com.adobe.utils.AGALMacroAssembler;
-	import de.nulldesign.nd2dx.materials.MaterialBase;
 	import de.nulldesign.nd2dx.resource.ResourceAllocatorBase;
 	import de.nulldesign.nd2dx.resource.ResourceBase;
 	import de.nulldesign.nd2dx.resource.texture.Texture2D;

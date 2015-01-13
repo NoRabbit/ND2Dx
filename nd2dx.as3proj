@@ -10,9 +10,9 @@
     <movie height="550" />
     <movie version="14" />
     <movie minorVersion="0" />
-    <movie platform="Flash Player" />
+    <movie platform="AIR" />
     <movie background="#FFFFFF" />
-    <movie preferredSDK="AIR 14.0.0;14.0.0;" />
+    <movie preferredSDK="AIR 15.0.0;15.0.0;" />
   </output>
   <!-- Other classes to be compiled into your SWF -->
   <classpaths>
@@ -44,7 +44,7 @@
     <option loadExterns="" />
     <option staticLinkRSL="True" />
     <option additional="" />
-    <option compilerConstants="WGM::IS_EDITOR,false&#xA;WGM::IS_RELEASE,true" />
+    <option compilerConstants="WGM::IS_EDITOR,false&#xA;WGM::IS_RELEASE,true&#xA;ND2DX::USE_DOMAIN_MEMORY_BATCHING,true&#xA;ND2DX::USE_VECTOR_BATCHING,false" />
     <option minorVersion="" />
   </build>
   <!-- SWC Include Libraries -->
